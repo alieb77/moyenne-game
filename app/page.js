@@ -18,18 +18,17 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState('')
   const [timeToOpen, setTimeToOpen] = useState('')
 
-  // Calcule si le round est ouvert (midi-minuit heure Casablanca)
+  const isDST = (date) => {
+    const march = new Date(date.getFullYear(), 2, 31)
+    const october = new Date(date.getFullYear(), 9, 27)
+    return date >= march && date < october
+  }
+
   const getRoundStatus = () => {
     const now = new Date()
     const casaOffset = isDST(now) ? 1 : 0
     const casaHour = (now.getUTCHours() + casaOffset) % 24
     return casaHour >= 12 ? 'open' : 'closed'
-  }
-
-  const isDST = (date) => {
-    const march = new Date(date.getFullYear(), 2, 31)
-    const october = new Date(date.getFullYear(), 9, 27)
-    return date >= march && date < october
   }
 
   const getTimeLeft = () => {
@@ -38,13 +37,10 @@ export default function Home() {
     const casaHour = (now.getUTCHours() + casaOffset) % 24
     const casaMin = now.getUTCMinutes()
     const casaSec = now.getUTCSeconds()
-
     if (casaHour >= 12) {
-      // Temps avant minuit
       const secondsLeft = (23 - casaHour) * 3600 + (59 - casaMin) * 60 + (60 - casaSec)
       return formatTime(secondsLeft)
     } else {
-      // Temps avant midi
       const secondsLeft = (11 - casaHour) * 3600 + (59 - casaMin) * 60 + (60 - casaSec)
       return formatTime(secondsLeft)
     }
@@ -144,7 +140,7 @@ export default function Home() {
 
     let { data: existingPlayer } = await supabase
       .from('players').select('*')
-      .eq('game_id', currentGame.id).eq('user_id', user.id).single()
+      .eq('game_id', currentGame.id).eq('user_id', user.id).maybeSingle()
     if (!existingPlayer) {
       const { data } = await supabase
         .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname })
@@ -153,22 +149,20 @@ export default function Home() {
     }
     setPlayer(existingPlayer)
 
-    // Cherche le dernier round terminé pour les résultats
-    const { data: lastDoneRound } = await supabase
+    const { data: lastDoneRounds } = await supabase
       .from('rounds').select('*').eq('game_id', currentGame.id)
       .eq('status', 'done').order('round_number', { ascending: false }).limit(1)
+    const lastDoneRound = lastDoneRounds?.[0]
 
-    // Si entre minuit et midi : affiche résultats du dernier round
     if (roundStatus === 'closed') {
-      if (lastDoneRound?.[0]) {
-        await loadResults(lastDoneRound[0], existingPlayer)
+      if (lastDoneRound) {
+        await loadResults(lastDoneRound, existingPlayer)
         return
       }
       setScreen('waiting-open')
       return
     }
 
-    // Round ouvert (midi-minuit)
     const { data: rounds } = await supabase
       .from('rounds').select('*').eq('game_id', currentGame.id).eq('status', 'open').limit(1)
     const currentRound = rounds?.[0]
@@ -180,26 +174,27 @@ export default function Home() {
     setRound(currentRound)
 
     if (existingPlayer.eliminated) {
-      if (lastDoneRound?.[0]) {
-        await loadResults(lastDoneRound[0], existingPlayer)
+      if (lastDoneRound) {
+        await loadResults(lastDoneRound, existingPlayer)
       } else {
         setScreen('eliminated')
       }
       return
     }
 
-    const { data: existing } = await supabase
+    const { data: existingList } = await supabase
       .from('submissions').select('*')
-      .eq('round_id', currentRound.id).eq('player_id', existingPlayer.id).maybeSingle()
+      .eq('round_id', currentRound.id)
+      .eq('player_id', existingPlayer.id)
 
-        if (existing) {
-              setSubmitted(true)
-              const { count } = await supabase
-                .from('submissions').select('*', { count: 'exact', head: true })
-                .eq('round_id', currentRound.id)
-              setWaitingCount(count ?? 0)
-              setScreen('waiting-results')
-              return
+    if (existingList && existingList.length > 0) {
+      setSubmitted(true)
+      const { count } = await supabase
+        .from('submissions').select('*', { count: 'exact', head: true })
+        .eq('round_id', currentRound.id)
+      setWaitingCount(count ?? 0)
+      setScreen('waiting-results')
+      return
     }
 
     const { count } = await supabase
@@ -215,7 +210,6 @@ export default function Home() {
       .from('submissions').select('*, players(eliminated, username)')
       .eq('round_id', currentRound.id)
       .order('distance_from_average', { ascending: true })
-
     let updatedPlayer = p
     if (p?.id) {
       const { data: pd } = await supabase
@@ -246,10 +240,6 @@ export default function Home() {
     setUser(null); setGame(null); setRound(null); setPlayer(null)
     setResults(null); setSubmitted(false); setScreen('home')
   }
-
-  // ═══════════════════════════════
-  // ÉCRANS
-  // ═══════════════════════════════
 
   if (screen === 'loading') return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#000'}}>
@@ -325,7 +315,6 @@ export default function Home() {
     </div>
   )
 
-  // Écran avant midi (round pas encore ouvert)
   if (screen === 'waiting-open') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',padding:24}}>
@@ -339,7 +328,6 @@ export default function Home() {
     </div>
   )
 
-  // Écran après soumission (attente minuit)
   if (screen === 'waiting-results') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',padding:24}}>
@@ -367,12 +355,10 @@ export default function Home() {
             <button onClick={logout} style={{background:'none',border:'none',color:'#333',cursor:'pointer',fontFamily:'monospace',fontSize:10}}>déconnexion</button>
           </div>
         </div>
-
         <div style={{background:'#111',border:'1px solid #222',padding:16,marginBottom:24,textAlign:'center'}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:4}}>FERMETURE DU ROUND DANS</p>
           <p style={{fontSize:32,color:'#e8ff00',margin:0,letterSpacing:4}}>{timeLeft}</p>
         </div>
-
         <div style={{background:'#111',border:'1px solid #222',padding:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>TON NOMBRE (0-100)</p>
           <input type="number" min="0" max="100" value={number}
@@ -395,12 +381,10 @@ export default function Home() {
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>RÉSULTATS ROUND {results?.roundNumber}</p>
         <p style={{color:'#333',fontSize:11,marginBottom:32}}>Prochain round dans {timeToOpen}</p>
-
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>MOYENNE DU ROUND</p>
           <p style={{fontSize:64,color:'#e8ff00',margin:0}}>{results?.average?.toFixed(1)}</p>
         </div>
-
         {!player?.eliminated ? (
           <div style={{background:'#001a00',border:'1px solid #00ff88',padding:24,marginBottom:16,textAlign:'center'}}>
             <p style={{color:'#00ff88',fontSize:18,letterSpacing:3}}>✓ SURVIVANT</p>
@@ -412,7 +396,6 @@ export default function Home() {
             <p style={{color:'#555',fontSize:12,marginTop:8}}>Tu étais trop loin de la moyenne</p>
           </div>
         )}
-
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT</p>
           {results?.submissions?.map((s, i) => (
@@ -426,7 +409,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-
         {player?.eliminated && (
           <button onClick={logout}
             style={{width:'100%',padding:16,background:'transparent',border:'1px solid #333',color:'#555',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
