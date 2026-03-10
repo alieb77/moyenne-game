@@ -192,14 +192,14 @@ export default function Home() {
       .from('submissions').select('*')
       .eq('round_id', currentRound.id).eq('player_id', existingPlayer.id).single()
 
-    if (existing) {
-      setSubmitted(true)
-      const { count } = await supabase
-        .from('submissions').select('*', { count: 'exact', head: true })
-        .eq('round_id', currentRound.id)
-      setWaitingCount(count ?? 0)
-      setScreen('waiting-results')
-      return
+        if (existing) {
+              setSubmitted(true)
+              const { count } = await supabase
+                .from('submissions').select('*', { count: 'exact', head: true })
+                .eq('round_id', currentRound.id)
+              setWaitingCount(count ?? 0)
+              setScreen('waiting-results')
+              return
     }
 
     const { count } = await supabase
