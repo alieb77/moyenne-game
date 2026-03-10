@@ -190,7 +190,7 @@ export default function Home() {
 
     const { data: existing } = await supabase
       .from('submissions').select('*')
-      .eq('round_id', currentRound.id).eq('player_id', existingPlayer.id).single()
+      .eq('round_id', currentRound.id).eq('player_id', existingPlayer.id).maybeSingle()
 
         if (existing) {
               setSubmitted(true)
