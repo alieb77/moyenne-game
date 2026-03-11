@@ -11,59 +11,9 @@ export default function Home() {
   const [round, setRound] = useState(null)
   const [player, setPlayer] = useState(null)
   const [number, setNumber] = useState('')
-  const [submitted, setSubmitted] = useState(false)
   const [message, setMessage] = useState('')
   const [results, setResults] = useState(null)
   const [waitingCount, setWaitingCount] = useState(0)
-  const [timeLeft, setTimeLeft] = useState('')
-  const [timeToOpen, setTimeToOpen] = useState('')
-
-  const isDST = (date) => {
-    const march = new Date(date.getFullYear(), 2, 31)
-    const october = new Date(date.getFullYear(), 9, 27)
-    return date >= march && date < october
-  }
-
-  const getRoundStatus = () => {
-    const now = new Date()
-    const casaOffset = isDST(now) ? 1 : 0
-    const casaHour = (now.getUTCHours() + casaOffset) % 24
-    return casaHour >= 12 ? 'open' : 'closed'
-  }
-
-  const getTimeLeft = () => {
-    const now = new Date()
-    const casaOffset = isDST(now) ? 1 : 0
-    const casaHour = (now.getUTCHours() + casaOffset) % 24
-    const casaMin = now.getUTCMinutes()
-    const casaSec = now.getUTCSeconds()
-    if (casaHour >= 12) {
-      const secondsLeft = (23 - casaHour) * 3600 + (59 - casaMin) * 60 + (60 - casaSec)
-      return formatTime(secondsLeft)
-    } else {
-      const secondsLeft = (11 - casaHour) * 3600 + (59 - casaMin) * 60 + (60 - casaSec)
-      return formatTime(secondsLeft)
-    }
-  }
-
-  const formatTime = (seconds) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-  }
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const t = getTimeLeft()
-      if (getRoundStatus() === 'open') {
-        setTimeLeft(t)
-      } else {
-        setTimeToOpen(t)
-      }
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -126,8 +76,6 @@ export default function Home() {
   }
 
   const joinGame = async (uname) => {
-    const roundStatus = getRoundStatus()
-
     let { data: games } = await supabase
       .from('games').select('*').in('status', ['waiting', 'active']).limit(1)
     let currentGame = games?.[0]
@@ -143,25 +91,11 @@ export default function Home() {
       .eq('game_id', currentGame.id).eq('user_id', user.id).maybeSingle()
     if (!existingPlayer) {
       const { data } = await supabase
-        .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname })
+        .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname, pv: 100 })
         .select().single()
       existingPlayer = data
     }
     setPlayer(existingPlayer)
-
-    const { data: lastDoneRounds } = await supabase
-      .from('rounds').select('*').eq('game_id', currentGame.id)
-      .eq('status', 'done').order('round_number', { ascending: false }).limit(1)
-    const lastDoneRound = lastDoneRounds?.[0]
-
-    if (roundStatus === 'closed') {
-      if (lastDoneRound) {
-        await loadResults(lastDoneRound, existingPlayer)
-        return
-      }
-      setScreen('waiting-open')
-      return
-    }
 
     const { data: rounds } = await supabase
       .from('rounds').select('*').eq('game_id', currentGame.id).eq('status', 'open').limit(1)
@@ -174,8 +108,11 @@ export default function Home() {
     setRound(currentRound)
 
     if (existingPlayer.eliminated) {
-      if (lastDoneRound) {
-        await loadResults(lastDoneRound, existingPlayer)
+      const { data: lastDoneRounds } = await supabase
+        .from('rounds').select('*').eq('game_id', currentGame.id)
+        .eq('status', 'done').order('round_number', { ascending: false }).limit(1)
+      if (lastDoneRounds?.[0]) {
+        await loadResults(lastDoneRounds[0], existingPlayer)
       } else {
         setScreen('eliminated')
       }
@@ -188,7 +125,6 @@ export default function Home() {
       .eq('player_id', existingPlayer.id)
 
     if (existingList && existingList.length > 0) {
-      setSubmitted(true)
       const { count } = await supabase
         .from('submissions').select('*', { count: 'exact', head: true })
         .eq('round_id', currentRound.id)
@@ -207,7 +143,7 @@ export default function Home() {
   const loadResults = async (currentRound, currentPlayer) => {
     const p = currentPlayer || player
     const { data } = await supabase
-      .from('submissions').select('*, players(eliminated, username)')
+      .from('submissions').select('*, players(pv, eliminated, username)')
       .eq('round_id', currentRound.id)
       .order('distance_from_average', { ascending: true })
     let updatedPlayer = p
@@ -230,7 +166,6 @@ export default function Home() {
     await supabase.from('submissions').insert({
       round_id: round.id, player_id: player.id, number: num
     })
-    setSubmitted(true)
     setMessage('')
     setScreen('waiting-results')
   }
@@ -238,7 +173,7 @@ export default function Home() {
   const logout = async () => {
     await supabase.auth.signOut()
     setUser(null); setGame(null); setRound(null); setPlayer(null)
-    setResults(null); setSubmitted(false); setScreen('home')
+    setResults(null); setScreen('home')
   }
 
   if (screen === 'loading') return (
@@ -256,12 +191,12 @@ export default function Home() {
           <h2 style={{color:'#e8ff00',fontSize:14,letterSpacing:3,marginBottom:24}}>COMMENT JOUER</h2>
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             {[
-              ['01','Chaque jour entre midi et minuit, soumets un nombre entre 0 et 100.'],
-              ['02','La moyenne de tous les nombres est calculée à minuit.'],
-              ['03','La moitié des joueurs les plus éloignés de la moyenne est éliminée.'],
-              ['04','En cas d\'égalité, tous les joueurs à égale distance sont éliminés.'],
-              ['05','Si tu ne soumets pas de nombre avant minuit, tu es éliminé automatiquement.'],
-              ['06','Le dernier survivant remporte la partie.'],
+              ['01','Chaque joueur commence avec 100 PV.'],
+              ['02','Chaque round, soumets un nombre entre 0 et 100.'],
+              ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
+              ['04','Tu perds autant de PV que ta distance à la cible.'],
+              ['05','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
+              ['06','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
             ].map(([num, text]) => (
               <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start'}}>
                 <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
@@ -320,9 +255,15 @@ export default function Home() {
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>LE JEU DE LA SURVIE</p>
-        <p style={{color:'#555',fontSize:12,letterSpacing:2,marginBottom:16}}>LE ROUND OUVRE DANS</p>
-        <p style={{fontSize:64,color:'#e8ff00',fontFamily:'monospace',marginBottom:48,letterSpacing:4}}>{timeToOpen}</p>
-        <p style={{color:'#333',fontSize:11}}>Reviens à midi pour soumettre ton nombre</p>
+        <p style={{color:'#555',fontSize:14,marginBottom:16}}>⏳ En attente du prochain round...</p>
+        <p style={{color:'#333',fontSize:11}}>L'administrateur lancera le round prochainement</p>
+        {player && (
+          <div style={{marginTop:48,background:'#111',border:'1px solid #222',padding:24,display:'inline-block'}}>
+            <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TES PV</p>
+            <p style={{fontSize:48,color:'#e8ff00',margin:0}}>{player.pv}</p>
+          </div>
+        )}
+        <br/>
         <button onClick={logout} style={{marginTop:48,background:'none',border:'none',color:'#333',cursor:'pointer',fontFamily:'monospace',fontSize:11}}>déconnexion</button>
       </div>
     </div>
@@ -333,10 +274,16 @@ export default function Home() {
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>ROUND {round?.round_number}</p>
-        <p style={{color:'#00ff88',fontSize:14,letterSpacing:2,marginBottom:32}}>✓ NOMBRE SOUMIS</p>
-        <p style={{color:'#555',fontSize:12,letterSpacing:2,marginBottom:16}}>RÉSULTATS DANS</p>
-        <p style={{fontSize:64,color:'#e8ff00',fontFamily:'monospace',marginBottom:48,letterSpacing:4}}>{timeLeft}</p>
-        <p style={{color:'#333',fontSize:11}}>{waitingCount} joueur(s) ont soumis leur nombre</p>
+        <p style={{color:'#00ff88',fontSize:14,letterSpacing:2,marginBottom:16}}>✓ NOMBRE SOUMIS</p>
+        <p style={{color:'#555',fontSize:12,marginBottom:32}}>{waitingCount} joueur(s) ont soumis leur nombre</p>
+        <p style={{color:'#333',fontSize:11}}>En attente de la clôture par l'administrateur...</p>
+        {player && (
+          <div style={{marginTop:48,background:'#111',border:'1px solid #222',padding:24,display:'inline-block'}}>
+            <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TES PV ACTUELS</p>
+            <p style={{fontSize:48,color:'#e8ff00',margin:0}}>{player.pv}</p>
+          </div>
+        )}
+        <br/>
         <button onClick={logout} style={{marginTop:48,background:'none',border:'none',color:'#333',cursor:'pointer',fontFamily:'monospace',fontSize:11}}>déconnexion</button>
       </div>
     </div>
@@ -352,14 +299,11 @@ export default function Home() {
           </div>
           <div style={{textAlign:'right'}}>
             <p style={{color:'#555',fontSize:11}}>{player?.username}</p>
+            <p style={{color:'#e8ff00',fontSize:18,margin:'4px 0'}}>{player?.pv} PV</p>
             <button onClick={logout} style={{background:'none',border:'none',color:'#333',cursor:'pointer',fontFamily:'monospace',fontSize:10}}>déconnexion</button>
           </div>
         </div>
-        <div style={{background:'#111',border:'1px solid #222',padding:16,marginBottom:24,textAlign:'center'}}>
-          <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:4}}>FERMETURE DU ROUND DANS</p>
-          <p style={{fontSize:32,color:'#e8ff00',margin:0,letterSpacing:4}}>{timeLeft}</p>
-        </div>
-        <div style={{background:'#111',border:'1px solid #222',padding:24}}>
+        <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>TON NOMBRE (0-100)</p>
           <input type="number" min="0" max="100" value={number}
             onChange={e => setNumber(e.target.value)} placeholder="0-100"
@@ -379,23 +323,19 @@ export default function Home() {
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
-        <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>RÉSULTATS ROUND {results?.roundNumber}</p>
-        <p style={{color:'#333',fontSize:11,marginBottom:32}}>Prochain round dans {timeToOpen}</p>
+        <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:32}}>RÉSULTATS ROUND {results?.roundNumber}</p>
+
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
-          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>MOYENNE DU ROUND</p>
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>CIBLE (2/3 moyenne)</p>
           <p style={{fontSize:64,color:'#e8ff00',margin:0}}>{results?.average?.toFixed(1)}</p>
         </div>
-        {!player?.eliminated ? (
-          <div style={{background:'#001a00',border:'1px solid #00ff88',padding:24,marginBottom:16,textAlign:'center'}}>
-            <p style={{color:'#00ff88',fontSize:18,letterSpacing:3}}>✓ SURVIVANT</p>
-            <p style={{color:'#555',fontSize:12,marginTop:8}}>Tu passes au round suivant</p>
-          </div>
-        ) : (
-          <div style={{background:'#1a0000',border:'1px solid #ff3131',padding:24,marginBottom:16,textAlign:'center'}}>
-            <p style={{color:'#ff3131',fontSize:18,letterSpacing:3}}>❌ ÉLIMINÉ</p>
-            <p style={{color:'#555',fontSize:12,marginTop:8}}>Tu étais trop loin de la moyenne</p>
-          </div>
-        )}
+
+        <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
+          <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TES PV RESTANTS</p>
+          <p style={{fontSize:48,color: player?.pv > 30 ? '#00ff88' : '#ff3131',margin:0}}>{player?.pv}</p>
+          {player?.eliminated && <p style={{color:'#ff3131',fontSize:12,marginTop:8}}>ÉLIMINÉ</p>}
+        </div>
+
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT</p>
           {results?.submissions?.map((s, i) => (
@@ -406,9 +346,11 @@ export default function Home() {
               </span>
               <span style={{color:'#888',fontSize:12}}>{s.number}</span>
               <span style={{color:'#555',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
+              <span style={{color:'#e8ff00',fontSize:11}}>{s.players?.pv} PV</span>
             </div>
           ))}
         </div>
+
         {player?.eliminated && (
           <button onClick={logout}
             style={{width:'100%',padding:16,background:'transparent',border:'1px solid #333',color:'#555',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
@@ -437,7 +379,8 @@ export default function Home() {
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:64,color:'#ff3131',marginBottom:16}}>ÉLIMINÉ</h1>
-        <p style={{color:'#555',fontSize:13,marginBottom:48}}>Tu étais trop loin de la moyenne.</p>
+        <p style={{color:'#555',fontSize:13,marginBottom:16}}>Tu as atteint 0 PV.</p>
+        <p style={{color:'#333',fontSize:11,marginBottom:48}}>Merci d'avoir joué !</p>
         <button onClick={logout}
           style={{padding:'14px 32px',background:'transparent',border:'1px solid #333',color:'#555',cursor:'pointer',fontFamily:'monospace',letterSpacing:2}}>
           REJOUER
