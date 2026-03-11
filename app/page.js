@@ -224,10 +224,10 @@ export default function Home() {
           style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:16,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
  <button onClick={async () => {
-  if (!email.endsWith('@groupeiscae.ma')) {
-    setMessage('Seules les adresses @groupeiscae.ma sont autorisées !')
-    return
-  }
+ // if (!email.endsWith('@groupeiscae.ma')) {
+  //  setMessage('Seules les adresses @groupeiscae.ma sont autorisées !')
+  //  return
+ // }
   await supabase.auth.signInWithOtp({ email })
   setMessage('Vérifie ton email !')
 }}
