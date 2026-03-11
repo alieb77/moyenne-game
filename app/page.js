@@ -223,10 +223,17 @@ export default function Home() {
           onChange={e => setEmail(e.target.value)}
           style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:16,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
-        <button onClick={() => supabase.auth.signInWithOtp({ email }).then(() => setMessage('Vérifie ton email !'))}
-          style={{width:'100%',padding:14,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
-          ENVOYER LE LIEN →
-        </button>
+ <button onClick={async () => {
+  if (!email.endsWith('@groupeiscae.ma')) {
+    setMessage('Seules les adresses @groupeiscae.ma sont autorisées !')
+    return
+  }
+  await supabase.auth.signInWithOtp({ email })
+  setMessage('Vérifie ton email !')
+}}
+  style={{width:'100%',padding:14,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
+  ENVOYER LE LIEN →
+</button>
         {message && <p style={{color:'#00ff88',marginTop:12,fontSize:12}}>{message}</p>}
       </div>
     </div>
