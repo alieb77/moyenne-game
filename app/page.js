@@ -256,11 +256,17 @@ export default function Home() {
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>LE JEU DE LA SURVIE</p>
         <p style={{color:'#555',fontSize:14,marginBottom:16}}>⏳ En attente du prochain round...</p>
-        <p style={{color:'#333',fontSize:11}}>L'administrateur lancera le round prochainement</p>
+        <p style={{color:'#333',fontSize:11,marginBottom:48}}>L'administrateur lancera le round prochainement</p>
         {player && (
-          <div style={{marginTop:48,background:'#111',border:'1px solid #222',padding:24,display:'inline-block'}}>
-            <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TES PV</p>
-            <p style={{fontSize:48,color:'#e8ff00',margin:0}}>{player.pv}</p>
+          <div style={{display:'flex',flexDirection:'column',gap:16,alignItems:'center'}}>
+            <div style={{background:'#111',border:'1px solid #222',padding:24,width:240}}>
+              <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TES PV</p>
+              <p style={{fontSize:48,color: player.pv > 50 ? '#e8ff00' : player.pv > 20 ? '#ff8800' : '#ff3131',margin:0}}>{player.pv}</p>
+              <div style={{width:'100%',height:6,background:'#222',borderRadius:3,marginTop:12}}>
+                <div style={{width: player.pv + '%', height:'100%', background: player.pv > 50 ? '#00ff88' : player.pv > 20 ? '#e8ff00' : '#ff3131', borderRadius:3}}/>
+              </div>
+            </div>
+            <RankDisplay player={player} game={game} />
           </div>
         )}
         <br/>
@@ -388,6 +394,43 @@ export default function Home() {
       </div>
     </div>
   )
+function RankDisplay({ player, game }) {
+    const [rank, setRank] = useState(null)
+    const [total, setTotal] = useState(null)
+
+    useEffect(() => {
+      if (!player || !game) return
+      const fetchRank = async () => {
+        const { data } = await supabase
+          .from('players')
+          .select('id, pv')
+          .eq('game_id', game.id)
+          .eq('eliminated', false)
+          .order('pv', { ascending: false })
+        if (data) {
+          setTotal(data.length)
+          const pos = data.findIndex(p => p.id === player.id)
+          setRank(pos + 1)
+        }
+      }
+      fetchRank()
+    }, [player, game])
+
+    if (!rank || !total) return null
+
+    return (
+      <div style={{background:'#111',border:'1px solid #222',padding:24,width:240}}>
+        <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TON CLASSEMENT</p>
+        <p style={{margin:0}}>
+          <span style={{fontSize:48,color:'#e8ff00'}}>{rank}</span>
+          <span style={{color:'#555',fontSize:14}}>/{total}</span>
+        </p>
+        <p style={{color:'#333',fontSize:11,marginTop:8}}>
+          {rank === 1 ? '🏆 Tu mènes la partie !' : rank <= 3 ? '🔥 Top 3 !' : rank === total ? '⚠️ Dernier survivant...' : ''}
+        </p>
+      </div>
+    )
+  }
 
   return null
 }
