@@ -224,10 +224,10 @@ export default function Home() {
           style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:16,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
  <button onClick={async () => {
- // if (!email.endsWith('@groupeiscae.ma')) {
+  // if (!email.endsWith('@groupeiscae.ma')) {
   //  setMessage('Seules les adresses @groupeiscae.ma sont autorisées !')
   //  return
- // }
+  // }
   await supabase.auth.signInWithOtp({ email })
   setMessage('Vérifie ton email !')
 }}
@@ -264,6 +264,11 @@ export default function Home() {
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>LE JEU DE LA SURVIE</p>
         <p style={{color:'#555',fontSize:14,marginBottom:16}}>⏳ En attente du prochain round...</p>
         <p style={{color:'#333',fontSize:11,marginBottom:48}}>L'administrateur lancera le round prochainement</p>
+
+<button onClick={() => setScreen('rules')}
+  style={{marginTop:24,background:'none',border:'1px solid #333',color:'#e8ff00',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:3,padding:'8px 24px'}}>
+  RULES
+</button>
         {player && (
           <div style={{display:'flex',flexDirection:'column',gap:16,alignItems:'center'}}>
             <div style={{background:'#111',border:'1px solid #222',padding:24,width:240}}>
