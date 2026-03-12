@@ -74,7 +74,7 @@ export default function Admin() {
 
   const closeRound = async () => {
     if (!round) return
-    const { error } = await supabase.rpc('close_round', { round_id: round.id })
+    const { error } = await supabase.rpc('close_round', { p_round_id: round.id })
     if (error) setMessage('Erreur : ' + error.message)
     else { setMessage('Round clôturé !'); setJustClosed(true); load() }
   }

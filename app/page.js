@@ -279,6 +279,13 @@ if (!currentRound) {
     setScreen('results')
   }
 
+  const effectiveDamage = (distance, target) => {
+    const numericDistance = Number(distance ?? 0)
+    const numericTarget = Number(target ?? 0)
+    if (numericTarget > 33.3) return numericDistance / 2
+    return numericDistance
+  }
+
   const loadHistoryRoundDetails = async (roundData) => {
     if (!roundData?.id) return
     setSelectedHistoryRound(roundData)
@@ -359,7 +366,7 @@ if (!currentRound) {
               ['01','Chaque joueur commence avec 100 PV.'],
               ['02','Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).'],
               ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
-              ['04','Tu perds autant de PV que ta distance à la cible.'],
+              ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
               ['05','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
               ['06','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
             ].map(([num, text]) => (
@@ -565,6 +572,9 @@ if (!currentRound) {
               </span>
               <span style={{color:'#888',fontSize:12}}>{s.number}</span>
               <span style={{color:'#555',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
+              <span style={{color:'#e8ff00',fontSize:11}}>
+                -{effectiveDamage(s.distance_from_average, results?.target).toFixed(1)} PV
+              </span>
               <span style={{color:'#e8ff00',fontSize:11}}>{s.players?.pv} PV</span>
             </div>
           ))}
@@ -659,7 +669,7 @@ if (!currentRound) {
                         </span>
                         <span style={{color:'#ddd',fontSize:12}}>{s.number}</span>
                         <span style={{color:'#777',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
-                        <span style={{color:'#e8ff00',fontSize:11}}>-{s.distance_from_average?.toFixed(1)} PV</span>
+                        <span style={{color:'#e8ff00',fontSize:11}}>-{effectiveDamage(s.distance_from_average, selectedHistoryRound?.target).toFixed(1)} PV</span>
                       </div>
                     ))}
                   </div>
@@ -749,7 +759,7 @@ if (screen === 'rules') return (
           ['01','Chaque joueur commence avec 100 PV.'],
           ['02','Chaque round, soumets un nombre entre 0 et 100.'],
           ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
-          ['04','Tu perds autant de PV que ta distance à la cible.'],
+          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
           ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
           ['06','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
           ['07','À 0 PV tu es éliminé définitivement.'],
@@ -775,7 +785,7 @@ if (screen === 'rules') return (
           ['01','Chaque joueur commence avec 100 PV.'],
           ['02','Chaque round, soumets un nombre entre 0 et 100.'],
           ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
-          ['04','Tu perds autant de PV que ta distance à la cible.'],
+          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
           ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
           ['06','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
           ['07','À 0 PV tu es éliminé définitivement.'],
