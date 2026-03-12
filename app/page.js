@@ -14,6 +14,7 @@ export default function Home() {
   const [message, setMessage] = useState('')
   const [results, setResults] = useState(null)
   const [winnerUsername, setWinnerUsername] = useState(null)
+  const [totalRanking, setTotalRanking] = useState([])
   const [waitingCount, setWaitingCount] = useState(0)
   const [historyRounds, setHistoryRounds] = useState([])
   const [selectedHistoryRound, setSelectedHistoryRound] = useState(null)
@@ -233,6 +234,13 @@ if (!currentRound) {
       .eq('game_id', currentRound.game_id)
       .eq('eliminated', false)
 
+    const { data: rankingData } = await supabase
+      .from('players')
+      .select('id, username, pv, eliminated, eliminated_at_round')
+      .eq('game_id', currentRound.game_id)
+      .order('pv', { ascending: false })
+      .order('eliminated_at_round', { ascending: false, nullsFirst: true })
+
     if ((alivePlayers ?? []).length === 1) {
       setWinnerUsername(alivePlayers[0].username)
     } else {
@@ -240,6 +248,7 @@ if (!currentRound) {
     }
 
     setPlayer(updatedPlayer)
+    setTotalRanking(rankingData ?? [])
     setResults({ average: currentRound.average, target: currentRound.target, submissions: data, roundNumber: currentRound.round_number })
     setScreen('results')
   }
@@ -301,7 +310,7 @@ if (!currentRound) {
   const logout = async () => {
     await supabase.auth.signOut()
     setUser(null); setGame(null); setRound(null); setPlayer(null)
-    setResults(null); setWinnerUsername(null); setScreen('home')
+    setResults(null); setWinnerUsername(null); setTotalRanking([]); setScreen('home')
   }
 
   if (screen === 'loading') return (
@@ -509,7 +518,7 @@ if (!currentRound) {
         </div>
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
-          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT</p>
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT DU ROUND</p>
           {results?.submissions?.map((s, i) => (
             <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:s.players?.eliminated ? 0.4 : 1}}>
               <span style={{color:'#555',fontSize:11}}>#{i+1}</span>
@@ -521,6 +530,20 @@ if (!currentRound) {
               <span style={{color:'#e8ff00',fontSize:11}}>{s.players?.pv} PV</span>
             </div>
           ))}
+        </div>
+
+        <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT TOTAL (TOUS LES ROUNDS)</p>
+          {totalRanking.map((p, i) => (
+            <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:p.eliminated ? 0.55 : 1}}>
+              <span style={{color:'#555',fontSize:11}}>#{i + 1}</span>
+              <span style={{color:p.eliminated ? '#ff3131' : '#00ff88',fontSize:13}}>
+                {p.eliminated ? '❌' : '✓'} {p.username ?? 'Joueur'}
+              </span>
+              <span style={{color:'#e8ff00',fontSize:11}}>{p.pv} PV</span>
+            </div>
+          ))}
+          {totalRanking.length === 0 && <p style={{color:'#666',fontSize:12,margin:0}}>Aucune donnée de classement.</p>}
         </div>
 
         <button onClick={openHistory}
