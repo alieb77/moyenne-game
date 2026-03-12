@@ -12,6 +12,7 @@ export default function Admin() {
   const [round, setRound] = useState(null)
   const [game, setGame] = useState(null)
   const [message, setMessage] = useState('')
+  const [justClosed, setJustClosed] = useState(false)
 
   const load = async () => {
     const { data: games } = await supabase
@@ -75,7 +76,7 @@ export default function Admin() {
     if (!round) return
     const { error } = await supabase.rpc('close_round', { round_id: round.id })
     if (error) setMessage('Erreur : ' + error.message)
-    else { setMessage('Round clôturé !'); setTimeout(() => load(), 1000) }
+    else { setMessage('Round clôturé !'); setJustClosed(true); load() }
   }
 
   const resetGame = async () => {
@@ -137,7 +138,7 @@ export default function Admin() {
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CONTRÔLE DES ROUNDS</p>
 
-          {round ? (
+          {round && !justClosed ? (
             <>
               <p style={{color:'white',margin:'0 0 8px'}}>
                 Round <strong style={{color:'#e8ff00'}}>#{round.round_number}</strong> — 
