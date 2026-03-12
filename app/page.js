@@ -191,7 +191,7 @@ if (!currentRound) {
       if (pd) updatedPlayer = pd
     }
     setPlayer(updatedPlayer)
-    setResults({ average: currentRound.average, submissions: data, roundNumber: currentRound.round_number })
+    setResults({ average: currentRound.average, target: currentRound.target, submissions: data, roundNumber: currentRound.round_number })
     setScreen('results')
   }
 
@@ -383,7 +383,7 @@ if (!currentRound) {
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>CIBLE (2/3 moyenne)</p>
-          <p style={{fontSize:64,color:'#e8ff00',margin:0}}>{results?.average?.toFixed(1)}</p>
+          <p style={{fontSize:64,color:'#e8ff00',margin:0}}>{results?.target?.toFixed(1)}</p>
         </div>
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
