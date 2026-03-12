@@ -75,7 +75,7 @@ export default function Admin() {
     if (!round) return
     const { error } = await supabase.rpc('close_round', { round_id: round.id })
     if (error) setMessage('Erreur : ' + error.message)
-    else { setMessage('Round clôturé !'); load() }
+    else { setMessage('Round clôturé !'); setTimeout(() => load(), 1000) }
   }
 
   const resetGame = async () => {
