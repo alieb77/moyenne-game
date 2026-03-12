@@ -473,6 +473,16 @@ if (!currentRound) {
   if (screen === 'results') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
+        {(() => {
+          const survivors = (results?.submissions ?? []).filter((s) => !s.players?.eliminated)
+          const isCurrentPlayerWinner = !player?.eliminated && survivors.length === 1 && survivors[0]?.player_id === player?.id
+          if (!isCurrentPlayerWinner) return null
+          return (
+            <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
+              <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>🏆 VOUS ÊTES LE GAGNANT</p>
+            </div>
+          )
+        })()}
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:32}}>RÉSULTATS ROUND {results?.roundNumber}</p>
 
