@@ -295,11 +295,13 @@ if (!currentRound) {
   }
 
   const submitNumber = async () => {
-    const num = parseFloat(number)
-    if (isNaN(num) || num < 0 || num > 100) {
-      setMessage('Entre un nombre entre 0 et 100 !')
+    const normalizedNumber = number.trim().replace(',', '.')
+    const isValidFormat = /^(?:100(?:\.0)?|[0-9]{1,2}(?:\.[0-9])?)$/.test(normalizedNumber)
+    if (!isValidFormat) {
+      setMessage('Entre un nombre entre 0 et 100 (max 1 décimale) !')
       return
     }
+    const num = Number(normalizedNumber)
     await supabase.from('submissions').insert({
       round_id: round.id, player_id: player.id, number: num
     })
@@ -329,7 +331,7 @@ if (!currentRound) {
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             {[
               ['01','Chaque joueur commence avec 100 PV.'],
-              ['02','Chaque round, soumets un nombre entre 0 et 100.'],
+              ['02','Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).'],
               ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
               ['04','Tu perds autant de PV que ta distance à la cible.'],
               ['05','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
@@ -478,9 +480,19 @@ if (!currentRound) {
           </div>
         </div>
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
-          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>TON NOMBRE (0-100)</p>
-          <input type="number" min="0" max="100" value={number}
-            onChange={e => setNumber(e.target.value)} placeholder="0-100"
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>TON NOMBRE (0-100, 1 décimale max)</p>
+          <input type="text" inputMode="decimal" value={number}
+            onChange={e => {
+              const nextValue = e.target.value.replace(',', '.')
+              if (nextValue === '') {
+                setNumber('')
+                return
+              }
+              if (!/^\d{0,3}(?:\.\d?)?$/.test(nextValue)) return
+              const parsed = Number(nextValue)
+              if (!Number.isNaN(parsed) && parsed > 100) return
+              setNumber(nextValue)
+            }} placeholder="Ex: 42.5"
             style={{width:'100%',padding:16,background:'#000',border:'1px solid #333',color:'white',fontSize:48,fontFamily:'monospace',marginBottom:16,boxSizing:'border-box',textAlign:'center'}}
           />
           <button onClick={submitNumber}
