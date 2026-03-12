@@ -48,9 +48,19 @@ export default function Home() {
         filter: `round_id=eq.${round.id}`
       }, () => setWaitingCount(c => c + 1))
       .subscribe()
+      const playerChannel = player ? supabase
+  .channel('player-pv')
+  .on('postgres_changes', {
+    event: 'UPDATE', schema: 'public', table: 'players',
+    filter: `id=eq.${player.id}`
+  }, (payload) => {
+    setPlayer(payload.new)
+  })
+  .subscribe() : null
     return () => {
       supabase.removeChannel(channel)
       supabase.removeChannel(subChannel)
+      if (playerChannel) supabase.removeChannel(playerChannel)
     }
   }, [round])
 
