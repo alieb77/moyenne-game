@@ -68,6 +68,28 @@ export default function Home() {
     }
   }, [round])
 
+  useEffect(() => {
+    if (!game?.id || !user) return
+
+    const gameRoundsChannel = supabase
+      .channel('game-rounds-' + game.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'rounds',
+        filter: `game_id=eq.${game.id}`
+      }, async (payload) => {
+        if (payload.new?.status === 'open' && payload.new?.id !== round?.id) {
+          await joinGame(player?.username)
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(gameRoundsChannel)
+    }
+  }, [game?.id, user, player?.username, round?.id])
+
   const checkProfile = async () => {
     const { data: profile } = await supabase
       .from('profiles').select('*').eq('id', user.id).single()
