@@ -785,7 +785,7 @@ if (screen === 'rules') return (
           ['01','Chaque joueur commence avec 100 PV.'],
           ['02','Chaque round, soumets un nombre entre 0 et 100.'],
           ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
-          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
+          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.'],
           ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
           ['06','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
           ['07','À 0 PV tu es éliminé définitivement.'],
