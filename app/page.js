@@ -13,6 +13,7 @@ export default function Home() {
   const [number, setNumber] = useState('')
   const [message, setMessage] = useState('')
   const [results, setResults] = useState(null)
+  const [winnerUsername, setWinnerUsername] = useState(null)
   const [waitingCount, setWaitingCount] = useState(0)
   const [historyRounds, setHistoryRounds] = useState([])
   const [selectedHistoryRound, setSelectedHistoryRound] = useState(null)
@@ -225,6 +226,19 @@ if (!currentRound) {
         .from('players').select('*').eq('id', p.id).single()
       if (pd) updatedPlayer = pd
     }
+
+    const { data: alivePlayers } = await supabase
+      .from('players')
+      .select('id, username')
+      .eq('game_id', currentRound.game_id)
+      .eq('eliminated', false)
+
+    if ((alivePlayers ?? []).length === 1) {
+      setWinnerUsername(alivePlayers[0].username)
+    } else {
+      setWinnerUsername(null)
+    }
+
     setPlayer(updatedPlayer)
     setResults({ average: currentRound.average, target: currentRound.target, submissions: data, roundNumber: currentRound.round_number })
     setScreen('results')
@@ -287,7 +301,7 @@ if (!currentRound) {
   const logout = async () => {
     await supabase.auth.signOut()
     setUser(null); setGame(null); setRound(null); setPlayer(null)
-    setResults(null); setScreen('home')
+    setResults(null); setWinnerUsername(null); setScreen('home')
   }
 
   if (screen === 'loading') return (
@@ -473,16 +487,13 @@ if (!currentRound) {
   if (screen === 'results') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
-        {(() => {
-          const survivors = (results?.submissions ?? []).filter((s) => !s.players?.eliminated)
-          const isCurrentPlayerWinner = !player?.eliminated && survivors.length === 1 && survivors[0]?.player_id === player?.id
-          if (!isCurrentPlayerWinner) return null
-          return (
-            <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
-              <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>🏆 VOUS ÊTES LE GAGNANT</p>
-            </div>
-          )
-        })()}
+        {winnerUsername && (
+          <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
+            <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>
+              {winnerUsername === player?.username ? '🏆 VOUS ÊTES LE GAGNANT' : `🏆 GAGNANT : ${winnerUsername}`}
+            </p>
+          </div>
+        )}
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:32}}>RÉSULTATS ROUND {results?.roundNumber}</p>
 
