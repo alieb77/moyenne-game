@@ -101,9 +101,14 @@ export default function Home() {
     }
     setGame(currentGame)
 
-    let { data: existingPlayer } = await supabase
-      .from('players').select('*')
-      .eq('game_id', currentGame.id).eq('user_id', user.id).maybeSingle()
+ let { data: existingPlayer } = await supabase
+  .from('players')
+  .select('*')
+  .eq('user_id', user.id)
+  .eq('eliminated', false)
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .maybeSingle()
     if (!existingPlayer) {
       const { data } = await supabase
         .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname, pv: 100 })
