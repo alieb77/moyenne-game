@@ -119,22 +119,46 @@ export default function Home() {
   }
 
   const joinGame = async (uname) => {
-    let { data: games } = await supabase
+    const { data: games } = await supabase
       .from('games').select('*').in('status', ['waiting', 'active']).limit(1)
-    let currentGame = games?.[0]
-    if (!currentGame) {
-      const { data } = await supabase
-        .from('games').insert({ status: 'waiting' }).select().single()
-      currentGame = data
-    }
-    setGame(currentGame)
+    let currentGame = games?.[0] ?? null
+    let existingPlayer = null
 
- let { data: existingPlayer } = await supabase
-  .from('players')
-  .select('*')
-  .eq('game_id', currentGame.id)
-  .eq('user_id', user.id)
-  .maybeSingle()
+    if (currentGame) {
+      const { data } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', currentGame.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      existingPlayer = data
+    } else {
+      const { data: previousPlayers } = await supabase
+        .from('players')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const previousPlayer = previousPlayers?.[0]
+      if (previousPlayer) {
+        const { data: previousGame } = await supabase
+          .from('games')
+          .select('*')
+          .eq('id', previousPlayer.game_id)
+          .single()
+        currentGame = previousGame ?? null
+        existingPlayer = previousPlayer
+      }
+    }
+
+    if (!currentGame) {
+      setMessage("Aucune partie en cours. Attends que l'admin lance une nouvelle partie.")
+      setScreen('waiting-open')
+      return
+    }
+
+    setGame(currentGame)
     if (!existingPlayer) {
       const { count: roundsCount } = await supabase
         .from('rounds')
@@ -243,6 +267,8 @@ if (!currentRound) {
 
     if ((alivePlayers ?? []).length === 1) {
       setWinnerUsername(alivePlayers[0].username)
+    } else if ((alivePlayers ?? []).length === 0 && (rankingData ?? []).length > 0) {
+      setWinnerUsername(rankingData[0].username)
     } else {
       setWinnerUsername(null)
     }
