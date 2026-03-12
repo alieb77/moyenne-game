@@ -95,7 +95,12 @@ export default function Home() {
         .select().single()
       existingPlayer = data
     }
-    setPlayer(existingPlayer)
+    const { data: freshPlayer } = await supabase
+  .from('players')
+  .select('*')
+  .eq('id', existingPlayer.id)
+  .single()
+setPlayer(freshPlayer || existingPlayer)
 
     const { data: rounds } = await supabase
       .from('rounds').select('*').eq('game_id', currentGame.id).eq('status', 'open').limit(1)
