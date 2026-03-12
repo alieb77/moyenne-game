@@ -70,9 +70,14 @@ export default function Home() {
     if (!profile) {
       setScreen('username')
     } else {
-      await joinGame(profile.username)
+      if (!player) await joinGame(profile.username)
+    else {
+      const { data: freshPlayer } = await supabase
+        .from('players').select('*').eq('id', player.id).single()
+      if (freshPlayer) setPlayer(freshPlayer)
     }
-  }
+        }
+      }
 
   const saveUsername = async () => {
     if (!username.trim() || username.length < 2) {
