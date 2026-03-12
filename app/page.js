@@ -130,12 +130,21 @@ export default function Home() {
  let { data: existingPlayer } = await supabase
   .from('players')
   .select('*')
+  .eq('game_id', currentGame.id)
   .eq('user_id', user.id)
-  .eq('eliminated', false)
-  .order('created_at', { ascending: false })
-  .limit(1)
   .maybeSingle()
     if (!existingPlayer) {
+      const { count: roundsCount } = await supabase
+        .from('rounds')
+        .select('*', { count: 'exact', head: true })
+        .eq('game_id', currentGame.id)
+
+      if ((roundsCount ?? 0) > 0) {
+        setMessage('Une partie est déjà en cours. Reviens au prochain reset !')
+        setScreen('game-locked')
+        return
+      }
+
       const { data } = await supabase
         .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname, pv: 100 })
         .select().single()
@@ -358,6 +367,25 @@ if (!currentRound) {
           ENTRER DANS L'ARÈNE →
         </button>
         {message && <p style={{color:'#ff3131',marginTop:12,fontSize:12}}>{message}</p>}
+      </div>
+    </div>
+  )
+
+  if (screen === 'game-locked') return (
+    <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{maxWidth:500,width:'100%',padding:24,textAlign:'center'}}>
+        <h1 style={{fontSize:42,color:'#e8ff00',marginBottom:8}}>PARTIE EN COURS</h1>
+        <p style={{color:'#555',fontSize:12,letterSpacing:2,marginBottom:20}}>
+          Les nouvelles inscriptions sont fermées pour cette partie.
+        </p>
+        <p style={{color:'#888',fontSize:13,lineHeight:1.6,marginBottom:32}}>
+          Tu pourras rejoindre la prochaine partie quand l&apos;admin fera un reset.
+        </p>
+        {message && <p style={{color:'#ff3131',marginBottom:24,fontSize:12}}>{message}</p>}
+        <button onClick={logout}
+          style={{padding:'14px 24px',background:'transparent',border:'1px solid #333',color:'#777',cursor:'pointer',fontFamily:'monospace',letterSpacing:2}}>
+          RETOUR
+        </button>
       </div>
     </div>
   )
