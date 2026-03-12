@@ -130,9 +130,18 @@ if (!currentRound) {
   if (existingPlayer.eliminated) {
     setScreen('eliminated')
     return
-    }
-  setScreen('waiting-open')
+  }
+  // Cherche le dernier round terminé pour afficher les résultats
+  const { data: lastDoneRounds } = await supabase
+    .from('rounds').select('*').eq('game_id', currentGame.id)
+    .eq('status', 'done').order('round_number', { ascending: false }).limit(1)
+  if (lastDoneRounds?.[0]) {
+    await loadResults(lastDoneRounds[0], existingPlayer)
+  } else {
+    setScreen('waiting-open')
+  }
   return
+
    }
     setRound(currentRound)
 
