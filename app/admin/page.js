@@ -68,7 +68,7 @@ export default function Admin() {
     await supabase.from('rounds').insert({
       game_id: currentGame.id, round_number: nextNumber, status: 'open'
     })
-    setMessage('Round ' + nextNumber + ' lancé !')
+    setMessage('Round ' + nextNumber + ' lancé !'); setJustClosed(false)
     load()
   }
 
