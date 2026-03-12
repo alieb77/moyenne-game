@@ -787,9 +787,35 @@ if (screen === 'rules') return (
           ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
           ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.'],
           ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
-          ['06','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
+          ['06','Si tu es le seul à jouer 100, tu ne perds aucun point ce round.'],
           ['07','À 0 PV tu es éliminé définitivement.'],
           ['08','Le dernier survivant remporte la partie.'],
+        ].map(([num, text]) => (
+          <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start',borderBottom:'1px solid #111',paddingBottom:24}}>
+            <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
+            <p style={{color:'#888',fontSize:13,lineHeight:1.6,margin:0}}>{text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)
+if (screen === 'rules') return (
+  <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+    <div style={{maxWidth:600,margin:'0 auto',padding:'60px 24px'}}>
+      <button onClick={() => setScreen('waiting-open')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:32}}>← RETOUR</button>
+      <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>RULES</h1>
+      <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>COMMENT SURVIVRE</p>
+      <div style={{display:'flex',flexDirection:'column',gap:24}}>
+        {[
+          ['01','Chaque joueur commence avec 100 PV.'],
+          ['02','Chaque round, soumets un nombre entre 0 et 100.'],
+          ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
+          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.'],
+          ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
+          ['06','Si tu es le seul à jouer 100, tu ne perds aucun point ce round.'],
+          ['07','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
+          ['08','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
         ].map(([num, text]) => (
           <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start',borderBottom:'1px solid #111',paddingBottom:24}}>
             <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
