@@ -14,6 +14,10 @@ export default function Home() {
   const [message, setMessage] = useState('')
   const [results, setResults] = useState(null)
   const [waitingCount, setWaitingCount] = useState(0)
+  const [historyRounds, setHistoryRounds] = useState([])
+  const [selectedHistoryRound, setSelectedHistoryRound] = useState(null)
+  const [historySubmissions, setHistorySubmissions] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -193,6 +197,47 @@ if (!currentRound) {
     setPlayer(updatedPlayer)
     setResults({ average: currentRound.average, target: currentRound.target, submissions: data, roundNumber: currentRound.round_number })
     setScreen('results')
+  }
+
+  const loadHistoryRoundDetails = async (roundData) => {
+    if (!roundData?.id) return
+    setSelectedHistoryRound(roundData)
+    setHistoryLoading(true)
+
+    const { data } = await supabase
+      .from('submissions')
+      .select('*, players(username, eliminated, pv)')
+      .eq('round_id', roundData.id)
+      .order('distance_from_average', { ascending: true })
+
+    setHistorySubmissions(data ?? [])
+    setHistoryLoading(false)
+  }
+
+  const openHistory = async () => {
+    if (!game?.id) return
+    setHistoryLoading(true)
+
+    const { data: doneRounds } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('game_id', game.id)
+      .eq('status', 'done')
+      .order('round_number', { ascending: false })
+
+    const roundsList = doneRounds ?? []
+    setHistoryRounds(roundsList)
+
+    const defaultRound = roundsList.find((r) => r.round_number === results?.roundNumber) ?? roundsList[0] ?? null
+    if (defaultRound) {
+      await loadHistoryRoundDetails(defaultRound)
+    } else {
+      setSelectedHistoryRound(null)
+      setHistorySubmissions([])
+    }
+
+    setHistoryLoading(false)
+    setScreen('history')
   }
 
   const submitNumber = async () => {
@@ -407,11 +452,91 @@ if (!currentRound) {
           ))}
         </div>
 
+        <button onClick={openHistory}
+          style={{width:'100%',padding:14,background:'transparent',border:'1px solid #e8ff00',color:'#e8ff00',cursor:'pointer',fontSize:13,fontFamily:'monospace',letterSpacing:2,marginBottom:16}}>
+          HISTORIQUE DES ROUNDS
+        </button>
+
         {player?.eliminated && (
           <button onClick={logout}
             style={{width:'100%',padding:16,background:'transparent',border:'1px solid #333',color:'#555',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
             REJOUER
           </button>
+        )}
+      </div>
+    </div>
+  )
+
+  if (screen === 'history') return (
+    <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+      <div style={{maxWidth:900,margin:'0 auto',padding:'40px 24px'}}>
+        <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
+          ← RETOUR RÉSULTATS
+        </button>
+
+        <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:8}}>HISTORIQUE</h1>
+        <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:24}}>TOUS LES ROUNDS TERMINÉS</p>
+
+        {historyLoading && historyRounds.length === 0 ? (
+          <p style={{color:'#555',fontSize:12}}>Chargement...</p>
+        ) : historyRounds.length === 0 ? (
+          <p style={{color:'#555',fontSize:12}}>Aucun round terminé pour l'instant.</p>
+        ) : (
+          <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:16}}>
+            <div style={{background:'#111',border:'1px solid #222',padding:12,maxHeight:560,overflowY:'auto'}}>
+              {historyRounds.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => loadHistoryRoundDetails(r)}
+                  style={{
+                    width:'100%',
+                    textAlign:'left',
+                    marginBottom:8,
+                    padding:'12px 10px',
+                    background:selectedHistoryRound?.id === r.id ? '#1a1a1a' : 'transparent',
+                    border:selectedHistoryRound?.id === r.id ? '1px solid #e8ff00' : '1px solid #222',
+                    color:'white',
+                    cursor:'pointer',
+                    fontFamily:'monospace'
+                  }}>
+                  <p style={{margin:'0 0 4px 0',fontSize:12,color:'#e8ff00'}}>ROUND {r.round_number}</p>
+                  <p style={{margin:0,fontSize:11,color:'#777'}}>Cible: {r.target?.toFixed(1) ?? '-'}</p>
+                </button>
+              ))}
+            </div>
+
+            <div style={{background:'#111',border:'1px solid #222',padding:20}}>
+              {selectedHistoryRound ? (
+                <>
+                  <p style={{margin:'0 0 8px 0',fontSize:12,color:'#e8ff00',letterSpacing:2}}>
+                    ROUND {selectedHistoryRound.round_number}
+                  </p>
+                  <p style={{margin:'0 0 4px 0',fontSize:12,color:'#888'}}>
+                    CIBLE: {selectedHistoryRound.target?.toFixed(1) ?? '-'}
+                  </p>
+                  <p style={{margin:'0 0 20px 0',fontSize:12,color:'#555'}}>
+                    MOYENNE: {selectedHistoryRound.average?.toFixed(1) ?? '-'}
+                  </p>
+
+                  <div style={{borderTop:'1px solid #1a1a1a'}}>
+                    {historySubmissions.map((s, i) => (
+                      <div key={s.id} style={{display:'grid',gridTemplateColumns:'50px 1fr 80px 80px 90px',gap:8,alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:s.players?.eliminated ? 0.5 : 1}}>
+                        <span style={{color:'#555',fontSize:11}}>#{i + 1}</span>
+                        <span style={{color:s.players?.eliminated ? '#ff3131' : '#00ff88',fontSize:12}}>
+                          {s.players?.eliminated ? '❌' : '✓'} {s.players?.username ?? 'Joueur'}
+                        </span>
+                        <span style={{color:'#ddd',fontSize:12}}>{s.number}</span>
+                        <span style={{color:'#777',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
+                        <span style={{color:'#e8ff00',fontSize:11}}>-{s.distance_from_average?.toFixed(1)} PV</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p style={{color:'#555',fontSize:12}}>Sélectionne un round pour voir le détail.</p>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
