@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Home() {
@@ -24,6 +24,11 @@ export default function Home() {
 
   const [lang, setLang] = useState('fr')
   const [isMobile, setIsMobile] = useState(false)
+  const [musicOn, setMusicOn] = useState(false)
+  const audioRef = useRef(null)
+  const oscillatorRef = useRef(null)
+  const intervalRef = useRef(null)
+
   const tr = (key) => translations[lang]?.[key] ?? key
 
   useEffect(() => {
@@ -32,6 +37,64 @@ export default function Home() {
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
+
+  useEffect(() => {
+    if (!musicOn) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      if (oscillatorRef.current) {
+        oscillatorRef.current.stop()
+        oscillatorRef.current.disconnect()
+        oscillatorRef.current = null
+      }
+      return
+    }
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    if (!AudioContext) return
+
+    if (!audioRef.current) {
+      audioRef.current = new AudioContext()
+    }
+
+    const ctx = audioRef.current
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
+
+    const gain = ctx.createGain()
+    gain.gain.value = 0.06
+    gain.connect(ctx.destination)
+
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(440, ctx.currentTime)
+    osc.connect(gain)
+    osc.start()
+    oscillatorRef.current = osc
+
+    const notes = [440, 494, 523, 587, 659, 698, 784]
+    let step = 0
+    intervalRef.current = setInterval(() => {
+      const next = notes[step % notes.length]
+      osc.frequency.setValueAtTime(next, ctx.currentTime)
+      step += 1
+    }, 600)
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      if (oscillatorRef.current) {
+        oscillatorRef.current.stop()
+        oscillatorRef.current.disconnect()
+        oscillatorRef.current = null
+      }
+    }
+  }, [musicOn])
 
   const hintText = lang === 'fr'
     ? 'Rapproche-toi du 2/3 de la moyenne de tous les nombres pour perdre le moins de points de vie !\nOu prends le risque d’être le seul à choisir 100 pour perdre 0 PV et faire perdre un max aux autres.'
@@ -58,7 +121,25 @@ export default function Home() {
   }
 
   const hint = (
-    <div style={hintStyle}>{hintText}</div>
+    <div style={hintStyle}>
+      <div style={{marginBottom: 8}}>{hintText}</div>
+      <button
+        onClick={() => setMusicOn(prev => !prev)}
+        style={{
+          background: 'rgba(232, 255, 0, 0.15)',
+          border: '1px solid rgba(232, 255, 0, 0.35)',
+          borderRadius: 8,
+          padding: '6px 10px',
+          color: '#e8ff00',
+          cursor: 'pointer',
+          fontSize: 11,
+          letterSpacing: 1,
+          width: '100%',
+        }}
+      >
+        {musicOn ? '🔊 ' : '🔇 '}{lang === 'fr' ? 'Musique' : 'Music'}
+      </button>
+    </div>
   )
 
   const translations = {
