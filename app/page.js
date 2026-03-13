@@ -595,9 +595,11 @@ if (!currentRound) {
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT DU ROUND</p>
           {results?.submissions?.map((s, i) => {
+            const deltaFromDb = typeof s.pv_delta === 'number' ? s.pv_delta : null
             const oldPv = prevRanking.find(p => p.id === s.player_id || p.id === s.players?.id)?.pv ?? null
             const newPv = s.players?.pv ?? null
-            const delta = typeof oldPv === 'number' && typeof newPv === 'number' ? newPv - oldPv : null
+            const deltaComputed = typeof oldPv === 'number' && typeof newPv === 'number' ? newPv - oldPv : null
+            const delta = deltaFromDb ?? deltaComputed
 
             return (
               <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:s.players?.eliminated ? 0.4 : 1}}>
