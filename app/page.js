@@ -592,20 +592,25 @@ if (!currentRound) {
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:16}}>CLASSEMENT DU ROUND</p>
-          {results?.submissions?.map((s, i) => (
-            <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:s.players?.eliminated ? 0.4 : 1}}>
-              <span style={{color:'#555',fontSize:11}}>#{i+1}</span>
-              <span style={{color:s.players?.eliminated ? '#ff3131' : '#00ff88',fontSize:13}}>
-                {s.players?.eliminated ? '❌' : '✓'} {s.players?.username ?? 'Joueur'}
-              </span>
-              <span style={{color:'#888',fontSize:12}}>{s.number}</span>
-              <span style={{color:'#555',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
-              <span style={{color:'#e8ff00',fontSize:11}}>
-                -{effectiveDamage(s.distance_from_average, results?.target).toFixed(1)} PV
-              </span>
-              <span style={{color:'#e8ff00',fontSize:11}}>{s.players?.pv} PV</span>
-            </div>
-          ))}
+          {results?.submissions?.map((s, i) => {
+            const is100Winner = rule05Active && s.number === 100
+            const gain100ForRow = is100Winner ? Math.min(100, Math.max(0, 100 - (results?.target ?? 0))) : null
+            const damage = effectiveDamage(s.distance_from_average, results?.target)
+            return (
+              <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #1a1a1a',opacity:s.players?.eliminated ? 0.4 : 1}}>
+                <span style={{color:'#555',fontSize:11}}>#{i+1}</span>
+                <span style={{color:s.players?.eliminated ? '#ff3131' : '#00ff88',fontSize:13}}>
+                  {s.players?.eliminated ? '❌' : '✓'} {s.players?.username ?? 'Joueur'}
+                </span>
+                <span style={{color:'#888',fontSize:12}}>{s.number}</span>
+                <span style={{color:'#555',fontSize:11}}>±{s.distance_from_average?.toFixed(1)}</span>
+                <span style={{color:is100Winner ? '#00ff88' : '#e8ff00',fontSize:11}}>
+                  {is100Winner ? `+${gain100ForRow?.toFixed(1)} PV` : `-${damage.toFixed(1)} PV`}
+                </span>
+                <span style={{color:'#e8ff00',fontSize:11}}>{s.players?.pv} PV</span>
+              </div>
+            )
+          })}
         </div>
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
