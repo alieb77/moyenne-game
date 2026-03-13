@@ -552,7 +552,7 @@ if (!currentRound) {
 
     return (
       <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-        <div style={{maxWidth:500,margin:'0 auto',padding:60px 24px}}>
+        <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
           {winnerUsername && (
             <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
               <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>
@@ -730,6 +730,7 @@ if (!currentRound) {
       </div>
     </div>
   )
+  }
 
   if (screen === 'eliminated') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
