@@ -600,6 +600,11 @@ if (!currentRound) {
           HISTORIQUE DES ROUNDS
         </button>
 
+        <button onClick={() => setScreen('rules')}
+          style={{width:'100%',padding:14,background:'transparent',border:'1px solid #e8ff00',color:'#e8ff00',cursor:'pointer',fontSize:13,fontFamily:'monospace',letterSpacing:2,marginBottom:16}}>
+          RULES
+        </button>
+
         {player?.eliminated && (
           <button onClick={logout}
             style={{width:'100%',padding:16,background:'transparent',border:'1px solid #333',color:'#555',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
