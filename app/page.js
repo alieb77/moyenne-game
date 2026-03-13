@@ -367,8 +367,9 @@ if (!currentRound) {
               ['02','Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).'],
               ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
               ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
-              ['05','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
-              ['06','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
+              ['05','Règle du 100 unique : si exactement un joueur joue 100, il regagne les PV perdus (jusqu\'à 100 max).'],
+              ['06','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
+              ['07','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
             ].map(([num, text]) => (
               <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start'}}>
                 <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
@@ -416,7 +417,7 @@ if (!currentRound) {
       <div style={{maxWidth:400,width:'100%',padding:24}}>
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>TON PSEUDO</h1>
         <p style={{color:'#555',marginBottom:32,fontSize:12}}>Il sera visible de tous les joueurs</p>
-        <input type="text" placeholder="Ex: Destroyeur42" value={username}
+        <input type="text" placeholder="Ex: Lkhadri67" value={username}
           onChange={e => setUsername(e.target.value)} maxLength={20}
           style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:20,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
