@@ -367,7 +367,7 @@ if (!currentRound) {
               ['02','Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).'],
               ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
               ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
-              ['05','Règle du 100 unique : si exactement un joueur joue 100, il regagne les PV perdus (jusqu\'à 100 max).'],
+              ['05','Règle du 100 unique : si exactement un joueur joue 100, il gagne la distance entre la cible et 100 (max 100).'],
               ['06','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
               ['07','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
             ].map(([num, text]) => (
@@ -767,7 +767,7 @@ if (screen === 'rules') return (
           ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
           ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.'],
           ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
-          ['06','Si tu es le seul à jouer 100, tu ne perds aucun point ce round.'],
+          ['05','Si tu es le seul à jouer 100, tu gagnes la distance entre la cible et 100 (max 100).'],
           ['07','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
           ['08','À 0 PV tu es éliminé définitivement.'],
           ['09','Le dernier survivant remporte la partie.'],
