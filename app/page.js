@@ -25,6 +25,25 @@ export default function Home() {
   const [lang, setLang] = useState('fr')
   const tr = (key) => translations[lang]?.[key] ?? key
 
+  const hint = (
+    <div style={{
+      position: 'fixed',
+      left: 16,
+      top: 100,
+      maxWidth: 260,
+      padding: '12px 14px',
+      background: 'rgba(0,0,0,0.6)',
+      border: '1px solid rgba(255,255,255,0.2)',
+      color: '#e8ff00',
+      fontSize: 12,
+      lineHeight: 1.4,
+      borderRadius: 10,
+      zIndex: 9999,
+    }}>
+      Rapproche-toi du 2/3 de la moyenne de tous les nombres pour perdre le moins de points de vie !
+    </div>
+  )
+
   const translations = {
     fr: {
       play: 'JOUER →',
@@ -412,6 +431,7 @@ if (!currentRound) {
 
   if (screen === 'home') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+      {hint}
       <div style={{maxWidth:600,margin:'0 auto',padding:'80px 24px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
           <div>
@@ -452,6 +472,7 @@ if (!currentRound) {
 
   if (screen === 'login') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{maxWidth:400,width:'100%',padding:24}}>
         <button onClick={() => setScreen('home')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:32}}>← RETOUR</button>
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>CONNEXION</h1>
@@ -478,6 +499,7 @@ if (!currentRound) {
 
   if (screen === 'username') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{maxWidth:400,width:'100%',padding:24}}>
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>TON PSEUDO</h1>
         <p style={{color:'#555',marginBottom:32,fontSize:12}}>Il sera visible de tous les joueurs</p>
@@ -496,6 +518,7 @@ if (!currentRound) {
 
   if (screen === 'game-locked') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{maxWidth:500,width:'100%',padding:24,textAlign:'center'}}>
         <h1 style={{fontSize:42,color:'#e8ff00',marginBottom:8}}>PARTIE EN COURS</h1>
         <p style={{color:'#555',fontSize:12,letterSpacing:2,marginBottom:20}}>
@@ -515,6 +538,7 @@ if (!currentRound) {
 
   if (screen === 'waiting-open') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>LE JEU DE LA SURVIE</p>
@@ -545,6 +569,7 @@ if (!currentRound) {
 
   if (screen === 'waiting-results') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>ROUND {round?.round_number}</p>
@@ -565,6 +590,7 @@ if (!currentRound) {
 
   if (screen === 'game') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+      {hint}
       <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:32}}>
           <div>
@@ -616,6 +642,7 @@ if (!currentRound) {
 
     return (
       <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+        {hint}
         <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
           {winnerUsername && (
             <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
@@ -720,6 +747,7 @@ if (!currentRound) {
 
   if (screen === 'history') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+      {hint}
       <div style={{maxWidth:900,margin:'0 auto',padding:'40px 24px'}}>
         <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
           ← RETOUR RÉSULTATS
@@ -795,6 +823,7 @@ if (!currentRound) {
 
   if (screen === 'winner') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <p style={{color:'#e8ff00',fontSize:12,letterSpacing:4,marginBottom:16}}>FÉLICITATIONS</p>
         <h1 style={{fontSize:80,color:'#e8ff00',marginBottom:8,letterSpacing:-4}}>WINNER</h1>
@@ -810,6 +839,7 @@ if (!currentRound) {
 
   if (screen === 'eliminated') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:64,color:'#ff3131',marginBottom:16}}>ÉLIMINÉ</h1>
         <p style={{color:'#555',fontSize:13,marginBottom:16}}>Tu as atteint 0 PV.</p>
@@ -862,6 +892,7 @@ function RankDisplay({ player, game }) {
   }
 if (screen === 'rules') return (
   <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+    {hint}
     <div style={{maxWidth:600,margin:'0 auto',padding:'60px 24px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
         <button onClick={() => setScreen('waiting-open')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2}}>← {lang === 'fr' ? 'RETOUR' : 'BACK'}</button>
