@@ -23,25 +23,42 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   const [lang, setLang] = useState('fr')
+  const [isMobile, setIsMobile] = useState(false)
   const tr = (key) => translations[lang]?.[key] ?? key
 
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth <= 540)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  const hintText = lang === 'fr'
+    ? 'Rapproche-toi du 2/3 de la moyenne de tous les nombres pour perdre le moins de points de vie !\nOu prends le risque d’être le seul à choisir 100 pour perdre 0 PV et faire perdre un max aux autres.'
+    : 'Aim for 2/3 of the average to lose the least HP!\nOr take the risk of being the only one to pick 100 to lose 0 HP and make others lose a lot.'
+
+  const hintStyle = {
+    position: 'fixed',
+    left: isMobile ? 0 : 16,
+    right: isMobile ? 0 : 'auto',
+    top: isMobile ? 'auto' : 100,
+    bottom: isMobile ? 0 : 'auto',
+    maxWidth: isMobile ? '100%' : 260,
+    margin: isMobile ? 0 : undefined,
+    padding: '12px 14px',
+    background: 'rgba(0,0,0,0.7)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: '#e8ff00',
+    fontSize: 12,
+    lineHeight: 1.4,
+    borderRadius: isMobile ? 0 : 10,
+    zIndex: 9999,
+    whiteSpace: 'pre-line',
+    textAlign: isMobile ? 'center' : 'left',
+  }
+
   const hint = (
-    <div style={{
-      position: 'fixed',
-      left: 16,
-      top: 100,
-      maxWidth: 260,
-      padding: '12px 14px',
-      background: 'rgba(0,0,0,0.6)',
-      border: '1px solid rgba(255,255,255,0.2)',
-      color: '#e8ff00',
-      fontSize: 12,
-      lineHeight: 1.4,
-      borderRadius: 10,
-      zIndex: 9999,
-    }}>
-      Rapproche-toi du 2/3 de la moyenne de tous les nombres pour perdre le moins de points de vie !
-    </div>
+    <div style={hintStyle}>{hintText}</div>
   )
 
   const translations = {
