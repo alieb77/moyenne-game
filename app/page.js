@@ -539,18 +539,45 @@ if (!currentRound) {
     </div>
   )
 
-  if (screen === 'results') return (
-    <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-      <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
-        {winnerUsername && (
-          <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
-            <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>
-              {winnerUsername === player?.username ? '🏆 VOUS ÊTES LE GAGNANT' : `🏆 GAGNANT : ${winnerUsername}`}
-            </p>
-          </div>
-        )}
-        <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
-        <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:32}}>RÉSULTATS ROUND {results?.roundNumber}</p>
+  if (screen === 'results') {
+    const submissions = results?.submissions ?? []
+    const count100 = submissions.filter(s => s.number === 100).length
+    const has0 = submissions.some(s => s.number === 0)
+    const mySubmission = submissions.find(s => s.player_id === player?.id || s.players?.id === player?.id)
+    const rule05Active = count100 === 1
+    const rule06Active = has0 && count100 > 0
+    const gain100 = rule05Active && mySubmission?.number === 100
+      ? Math.min(100, Math.max(0, 100 - (results?.target ?? 0)))
+      : null
+
+    return (
+      <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
+        <div style={{maxWidth:500,margin:'0 auto',padding:60px 24px}}>
+          {winnerUsername && (
+            <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
+              <p style={{margin:0,color:'#00ff88',fontSize:12,letterSpacing:2}}>
+                {winnerUsername === player?.username ? '🏆 VOUS ÊTES LE GAGNANT' : `🏆 GAGNANT : ${winnerUsername}`}
+              </p>
+            </div>
+          )}
+
+          {(rule05Active || rule06Active) && (
+            <div style={{background:'#111',border:'1px solid #444',padding:16,marginBottom:16}}>
+              {rule05Active && (
+                <p style={{margin:0,color:'#e8ff00',fontSize:12,letterSpacing:2}}>
+                  Règle 100 unique activée : {mySubmission?.number === 100 ? `tu gagnes +${gain100.toFixed(1)} PV` : 'un joueur a gagné des PV'}.
+                </p>
+              )}
+              {rule06Active && mySubmission?.number === 0 && (
+                <p style={{margin:0,color:'#ff3131',fontSize:12,letterSpacing:2}}>
+                  Règle Double Tranchant activée : tu perds 20 PV supplémentaires (tu as joué 0 et quelqu'un a joué 100).
+                </p>
+              )}
+            </div>
+          )}
+
+          <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>MOYENNE</h1>
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:32}}>RÉSULTATS ROUND {results?.roundNumber}</p>
 
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:16,textAlign:'center'}}>
           <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:8}}>CIBLE (2/3 moyenne)</p>
