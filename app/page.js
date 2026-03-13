@@ -22,6 +22,60 @@ export default function Home() {
   const [historySubmissions, setHistorySubmissions] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
+  const [lang, setLang] = useState('fr')
+  const tr = (key) => translations[lang]?.[key] ?? key
+
+  const translations = {
+    fr: {
+      play: 'JOUER →',
+      rules: 'RULES',
+      howToPlay: 'COMMENT JOUER',
+      howToSurvive: 'COMMENT SURVIVRE',
+      login: 'CONNEXION',
+      sendLink: 'ENVOYER LE LIEN →',
+      usernameTitle: 'TON PSEUDO',
+      enterArena: "ENTRER DANS L'ARÈNE →",
+      back: '← RETOUR',
+      roundResults: 'RÉSULTATS ROUND',
+      target: 'CIBLE (2/3 moyenne)',
+      yourHp: 'TES PV RESTANTS',
+      roundRanking: 'CLASSEMENT DU ROUND',
+      totalRanking: 'CLASSEMENT TOTAL (TOUS LES ROUNDS)',
+      history: 'HISTORIQUE DES ROUNDS',
+      rulesHeader: 'RULES',
+      closeRound: 'CLÔTURER LE ROUND',
+      resetGame: 'RESET PARTIE',
+      logout: 'déconnexion',
+      replay: 'REJOUER',
+      waiting: 'En attente du prochain round...',
+      adminError: 'Erreur : structure of query does not match function result type',
+    },
+    en: {
+      play: 'PLAY →',
+      rules: 'RULES',
+      howToPlay: 'HOW TO PLAY',
+      howToSurvive: 'HOW TO SURVIVE',
+      login: 'LOGIN',
+      sendLink: 'SEND LINK →',
+      usernameTitle: 'YOUR USERNAME',
+      enterArena: 'ENTER THE ARENA →',
+      back: '← BACK',
+      roundResults: 'ROUND RESULTS',
+      target: 'TARGET (2/3 average)',
+      yourHp: 'YOUR HP LEFT',
+      roundRanking: 'ROUND RANKING',
+      totalRanking: 'TOTAL RANKING (ALL ROUNDS)',
+      history: 'ROUND HISTORY',
+      rulesHeader: 'RULES',
+      closeRound: 'CLOSE ROUND',
+      resetGame: 'RESET GAME',
+      logout: 'logout',
+      replay: 'REPLAY',
+      waiting: 'Waiting for next round...',
+      adminError: 'Error: structure of query does not match function result type',
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -359,19 +413,27 @@ if (!currentRound) {
   if (screen === 'home') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:600,margin:'0 auto',padding:'80px 24px'}}>
-        <h1 style={{fontSize:64,color:'#e8ff00',marginBottom:8,letterSpacing:-2}}>MOYENNE</h1>
-        <p style={{color:'#555',fontSize:13,letterSpacing:4,marginBottom:64}}>LE JEU DE LA SURVIE</p>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <div>
+            <h1 style={{fontSize:64,color:'#e8ff00',marginBottom:8,letterSpacing:-2}}>MOYENNE</h1>
+            <p style={{color:'#555',fontSize:13,letterSpacing:4,marginBottom:0}}>LE JEU DE LA SURVIE</p>
+          </div>
+          <button onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+            style={{background:'none',border:'1px solid #555',color:'#fff',cursor:'pointer',fontFamily:'monospace',fontSize:10,padding:'8px 12px'}}>
+            {lang === 'fr' ? 'EN' : 'FR'}
+          </button>
+        </div>
         <div style={{marginBottom:64}}>
-          <h2 style={{color:'#e8ff00',fontSize:14,letterSpacing:3,marginBottom:24}}>COMMENT JOUER</h2>
+          <h2 style={{color:'#e8ff00',fontSize:14,letterSpacing:3,marginBottom:24}}>{tr('howToPlay')}</h2>
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             {[
-              ['01','Chaque joueur commence avec 100 PV.'],
-              ['02','Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).'],
-              ['03','La cible est les 2/3 de la moyenne de tous les nombres.'],
-              ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.'],
-              ['05','Règle du 100 unique : si exactement un joueur joue 100, il gagne la distance entre la cible et 100 (max 100).'],
-              ['06','Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.'],
-              ['07','À 0 PV tu es éliminé. Le dernier survivant gagne.'],
+              ['01', lang === 'fr' ? 'Chaque joueur commence avec 100 PV.' : 'Each player starts with 100 HP.'],
+              ['02', lang === 'fr' ? 'Chaque round, soumets un nombre entre 0 et 100 (max 1 décimale).' : 'Each round, submit a number between 0 and 100 (max 1 decimal).'],
+              ['03', lang === 'fr' ? 'La cible est les 2/3 de la moyenne de tous les nombres.' : 'The target is 2/3 of the average of all numbers.'],
+              ['04', lang === 'fr' ? 'Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié.' : 'You lose HP equal to your distance from the target. If the target is above 33.3, you lose only half.'],
+              ['05', lang === 'fr' ? 'Règle du 100 unique : si exactement un joueur joue 100, il gagne la distance entre la cible et 100 (max 100).' : 'Unique 100 rule: if exactly one player plays 100, they gain the distance between the target and 100 (max 100).'],
+              ['06', lang === 'fr' ? 'Règle Double Tranchant : si quelqu\'un joue 0 et quelqu\'un joue 100, le joueur à 0 perd 20 PV bonus.' : 'Double-Edged Rule: if someone plays 0 and someone plays 100, the 0 player loses 20 extra HP.'],
+              ['07', lang === 'fr' ? 'À 0 PV tu es éliminé. Le dernier survivant gagne.' : 'At 0 HP you are eliminated. The last survivor wins.'],
             ].map(([num, text]) => (
               <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start'}}>
                 <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
@@ -382,7 +444,7 @@ if (!currentRound) {
         </div>
         <button onClick={() => setScreen('login')}
           style={{width:'100%',padding:18,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:3}}>
-          JOUER →
+          {tr('play')}
         </button>
       </div>
     </div>
@@ -785,13 +847,15 @@ function RankDisplay({ player, game }) {
 
     return (
       <div style={{background:'#111',border:'1px solid #222',padding:24,width:240}}>
-        <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>TON CLASSEMENT</p>
+        <p style={{color:'#555',fontSize:11,letterSpacing:2,marginBottom:8}}>{lang === 'fr' ? 'TON CLASSEMENT' : 'YOUR RANK'}</p>
         <p style={{margin:0}}>
           <span style={{fontSize:48,color:'#e8ff00'}}>{rank}</span>
           <span style={{color:'#555',fontSize:14}}>/{total}</span>
         </p>
         <p style={{color:'#333',fontSize:11,marginTop:8}}>
-          {rank === 1 ? '🏆 Tu mènes la partie !' : rank <= 3 ? '🔥 Top 3 !' : rank === total ? '⚠️ Dernier survivant...' : ''}
+          {rank === 1 ? (lang === 'fr' ? '🏆 Tu mènes la partie !' : '🏆 You lead the game!')
+            : rank <= 3 ? (lang === 'fr' ? '🔥 Top 3 !' : '🔥 Top 3!')
+            : rank === total ? (lang === 'fr' ? '⚠️ Dernier survivant...' : '⚠️ Last survivor...') : ''}
         </p>
       </div>
     )
@@ -799,20 +863,23 @@ function RankDisplay({ player, game }) {
 if (screen === 'rules') return (
   <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
     <div style={{maxWidth:600,margin:'0 auto',padding:'60px 24px'}}>
-      <button onClick={() => setScreen('waiting-open')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:32}}>← RETOUR</button>
-      <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>RULES</h1>
-      <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>COMMENT SURVIVRE</p>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+        <button onClick={() => setScreen('waiting-open')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2}}>← {lang === 'fr' ? 'RETOUR' : 'BACK'}</button>
+        <button onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} style={{background:'none',border:'1px solid #555',color:'#fff',cursor:'pointer',fontFamily:'monospace',fontSize:10,padding:'8px 12px'}}>{lang === 'fr' ? 'EN' : 'FR'}</button>
+      </div>
+      <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>{tr('rulesHeader')}</h1>
+      <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>{tr('howToSurvive')}</p>
       <div style={{display:'flex',flexDirection:'column',gap:24}}>
         {[
-          ['01','Chaque joueur commence avec 100 PV.'],
-          ['02','Chaque round, soumets un nombre entre 0 et 100.'],
-          ['03','La cible est les 2/3 de la moyenne de tous les nombres soumis.'],
-          ['04','Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.'],
-          ['05','Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.'],
-          ['05','Si tu es le seul à jouer 100, tu gagnes la distance entre la cible et 100 (max 100).'],
-          ['07','Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.'],
-          ['08','À 0 PV tu es éliminé définitivement.'],
-          ['09','Le dernier survivant remporte la partie.'],
+          ['01', lang === 'fr' ? 'Chaque joueur commence avec 100 PV.' : 'Each player starts with 100 HP.'],
+          ['02', lang === 'fr' ? 'Chaque round, soumets un nombre entre 0 et 100.' : 'Each round, submit a number between 0 and 100.'],
+          ['03', lang === 'fr' ? 'La cible est les 2/3 de la moyenne de tous les nombres soumis.' : 'The target is 2/3 of the average of all submitted numbers.'],
+          ['04', lang === 'fr' ? 'Tu perds autant de PV que ta distance à la cible. Si la cible dépasse 33.3, tu ne perds que la moitié de ta distance.' : 'You lose HP equal to your distance from the target. If the target is over 33.3, you lose only half.'],
+          ['05', lang === 'fr' ? 'Si tu ne soumets pas de nombre, tu perds 20 PV automatiquement.' : 'If you do not submit a number, you lose 20 HP automatically.'],
+          ['06', lang === 'fr' ? 'Si tu es le seul à jouer 100, tu gagnes la distance entre la cible et 100 (max 100).' : 'If you are the only one to play 100, you gain the distance between the target and 100 (max 100).'],
+          ['07', lang === 'fr' ? 'Règle Double Tranchant : si quelqu\'un joue 0 ET quelqu\'un joue 100, le joueur à 0 perd 20 PV supplémentaires.' : 'Double-Edged Rule: if someone plays 0 AND someone plays 100, the 0 player loses 20 extra HP.'],
+          ['08', lang === 'fr' ? 'À 0 PV tu es éliminé définitivement.' : 'At 0 HP you are eliminated permanently.'],
+          ['09', lang === 'fr' ? 'Le dernier survivant remporte la partie.' : 'The last survivor wins the game.'],
         ].map(([num, text]) => (
           <div key={num} style={{display:'flex',gap:24,alignItems:'flex-start',borderBottom:'1px solid #111',paddingBottom:24}}>
             <span style={{color:'#e8ff00',fontSize:11,minWidth:24,marginTop:2}}>{num}</span>
