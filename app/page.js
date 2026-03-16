@@ -832,6 +832,7 @@ if (!currentRound) {
       </div>
     </div>
   )
+}
 
   if (screen === 'history') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
@@ -932,7 +933,6 @@ if (!currentRound) {
       </div>
     </div>
   )
-  }
 
   if (screen === 'eliminated') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
