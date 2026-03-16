@@ -829,9 +829,7 @@ if (!currentRound) {
     </div>
   )
 
-  if (screen === 'history') {
-    console.log('Rendering history screen, historyRounds:', historyRounds, 'selectedHistoryRound:', selectedHistoryRound)
-    return (
+  if (screen === 'history') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:900,margin:'0 auto',padding:'40px 24px'}}>
         <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'white',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
