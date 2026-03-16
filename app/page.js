@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Home() {
+  console.log('Rendering Home, screen:', screen, 'game:', game, 'user:', user)
   const [screen, setScreen] = useState('loading')
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
