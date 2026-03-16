@@ -96,52 +96,6 @@ export default function Home() {
     }
   }, [musicOn])
 
-  const hintText = lang === 'fr'
-    ? 'Rapproche-toi du 2/3 de la moyenne de tous les nombres pour perdre le moins de points de vie !\nOu prends le risque d’être le seul à choisir 100 pour perdre 0 PV et faire perdre un max aux autres.'
-    : 'Aim for 2/3 of the average to lose the least HP!\nOr take the risk of being the only one to pick 100 to lose 0 HP and make others lose a lot.'
-
-  const hintStyle = {
-    position: 'fixed',
-    left: isMobile ? 0 : 16,
-    right: isMobile ? 0 : 'auto',
-    top: isMobile ? 'auto' : 100,
-    bottom: isMobile ? 0 : 'auto',
-    maxWidth: isMobile ? '100%' : 260,
-    margin: isMobile ? 0 : undefined,
-    padding: '12px 14px',
-    background: 'rgba(0,0,0,0.7)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: '#e8ff00',
-    fontSize: 12,
-    lineHeight: 1.4,
-    borderRadius: isMobile ? 0 : 10,
-    zIndex: 9999,
-    whiteSpace: 'pre-line',
-    textAlign: isMobile ? 'center' : 'left',
-  }
-
-  const hint = (
-    <div style={hintStyle}>
-      <div style={{marginBottom: 8}}>{hintText}</div>
-      <button
-        onClick={() => setMusicOn(prev => !prev)}
-        style={{
-          background: 'rgba(232, 255, 0, 0.15)',
-          border: '1px solid rgba(232, 255, 0, 0.35)',
-          borderRadius: 8,
-          padding: '6px 10px',
-          color: '#e8ff00',
-          cursor: 'pointer',
-          fontSize: 11,
-          letterSpacing: 1,
-          width: '100%',
-        }}
-      >
-        {musicOn ? '🔊 ' : '🔇 '}{lang === 'fr' ? 'Musique' : 'Music'}
-      </button>
-    </div>
-  )
-
   const translations = {
     fr: {
       play: 'JOUER →',
@@ -243,26 +197,49 @@ export default function Home() {
   }, [round])
 
   useEffect(() => {
-    if (!game?.id || !user) return
+    if (!user) return
 
-    const gameRoundsChannel = supabase
-      .channel('game-rounds-' + game.id)
+    const gamesChannel = supabase
+      .channel('games-changes')
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
-        table: 'rounds',
-        filter: `game_id=eq.${game.id}`
-      }, async (payload) => {
-        if (payload.new?.status === 'open' && payload.new?.id !== round?.id) {
-          await joinGame(player?.username)
+        table: 'games'
+      }, async () => {
+        const { data: profile } = await supabase
+          .from('profiles').select('username').eq('id', user.id).single()
+        if (profile?.username) {
+          await joinGame(profile.username)
         }
       })
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(gameRoundsChannel)
+    let gameRoundsChannel = null
+    if (game?.id) {
+      gameRoundsChannel = supabase
+        .channel('game-rounds-' + game.id)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${game.id}`
+        }, async (payload) => {
+          if (payload.new?.status === 'open' && payload.new?.id !== round?.id) {
+            const { data: prof } = await supabase
+              .from('profiles').select('username').eq('id', user.id).single()
+            if (prof?.username) {
+              await joinGame(prof.username)
+            }
+          }
+        })
+        .subscribe()
     }
-  }, [game?.id, user, player?.username, round?.id])
+
+    return () => {
+      supabase.removeChannel(gamesChannel)
+      if (gameRoundsChannel) supabase.removeChannel(gameRoundsChannel)
+    }
+  }, [user, game?.id, player?.username, round?.id])
 
   const checkProfile = async () => {
     const { data: profile } = await supabase
@@ -476,28 +453,34 @@ if (!currentRound) {
 
   const openHistory = async () => {
     if (!game?.id) return
+
     setHistoryLoading(true)
+    try {
+      const { data: doneRounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', game.id)
+        .eq('status', 'done')
+        .order('round_number', { ascending: false })
 
-    const { data: doneRounds } = await supabase
-      .from('rounds')
-      .select('*')
-      .eq('game_id', game.id)
-      .eq('status', 'done')
-      .order('round_number', { ascending: false })
+      const roundsList = doneRounds ?? []
+      setHistoryRounds(roundsList)
 
-    const roundsList = doneRounds ?? []
-    setHistoryRounds(roundsList)
+      const defaultRound = roundsList.find((r) => r.round_number === results?.roundNumber) ?? roundsList[0] ?? null
+      if (defaultRound) {
+        await loadHistoryRoundDetails(defaultRound)
+      } else {
+        setSelectedHistoryRound(null)
+        setHistorySubmissions([])
+      }
 
-    const defaultRound = roundsList.find((r) => r.round_number === results?.roundNumber) ?? roundsList[0] ?? null
-    if (defaultRound) {
-      await loadHistoryRoundDetails(defaultRound)
-    } else {
-      setSelectedHistoryRound(null)
-      setHistorySubmissions([])
+      setScreen('history')
+    } catch (err) {
+      console.error('Failed to load history rounds', err)
+      setMessage('Erreur de chargement de l\'historique. Réessaie plus tard.')
+    } finally {
+      setHistoryLoading(false)
     }
-
-    setHistoryLoading(false)
-    setScreen('history')
   }
 
   const submitNumber = async () => {
@@ -636,7 +619,6 @@ if (!currentRound) {
 
   if (screen === 'waiting-open') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>LE JEU DE LA SURVIE</p>
@@ -667,7 +649,6 @@ if (!currentRound) {
 
   if (screen === 'waiting-results') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:48,color:'#e8ff00',marginBottom:8}}>MOYENNE</h1>
         <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:48}}>ROUND {round?.round_number}</p>
@@ -688,7 +669,6 @@ if (!currentRound) {
 
   if (screen === 'game') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-      {hint}
       <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:32}}>
           <div>
@@ -740,7 +720,6 @@ if (!currentRound) {
 
     return (
       <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-        {hint}
         <div style={{maxWidth:500,margin:'0 auto',padding:'60px 24px'}}>
           {winnerUsername && (
             <div style={{background:'#001a00',border:'1px solid #00ff88',padding:14,marginBottom:16,textAlign:'center'}}>
@@ -845,22 +824,32 @@ if (!currentRound) {
 
   if (screen === 'history') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-      {hint}
       <div style={{maxWidth:900,margin:'0 auto',padding:'40px 24px'}}>
-        <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
+        <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'white',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
           ← RETOUR RÉSULTATS
         </button>
 
         <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:8}}>HISTORIQUE</h1>
-        <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:24}}>TOUS LES ROUNDS TERMINÉS</p>
+        <p style={{color:'white',fontSize:11,letterSpacing:3,marginBottom:24}}>TOUS LES ROUNDS TERMINÉS</p>
 
         {historyLoading && historyRounds.length === 0 ? (
-          <p style={{color:'#555',fontSize:12}}>Chargement...</p>
+          <p style={{color:'white',fontSize:12}}>Chargement...</p>
         ) : historyRounds.length === 0 ? (
-          <p style={{color:'#555',fontSize:12}}>Aucun round terminé pour l'instant.</p>
+          <p style={{color:'white',fontSize:12}}>Aucun round terminé pour l'instant.</p>
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:16}}>
-            <div style={{background:'#111',border:'1px solid #222',padding:12,maxHeight:560,overflowY:'auto'}}>
+          <div style={{
+            display: isMobile ? 'flex' : 'grid',
+            flexDirection: isMobile ? 'column' : undefined,
+            gridTemplateColumns: isMobile ? undefined : '260px 1fr',
+            gap: 16,
+          }}>
+            <div style={{
+              background: '#111',
+              border: '1px solid #222',
+              padding: 12,
+              maxHeight: isMobile ? 'none' : 560,
+              overflowY: isMobile ? 'visible' : 'auto',
+            }}>
               {historyRounds.map((r) => (
                 <button
                   key={r.id}
@@ -910,7 +899,7 @@ if (!currentRound) {
                   </div>
                 </>
               ) : (
-                <p style={{color:'#555',fontSize:12}}>Sélectionne un round pour voir le détail.</p>
+                <p style={{color:'white',fontSize:12}}>Sélectionne un round pour voir le détail.</p>
               )}
             </div>
           </div>
@@ -921,7 +910,6 @@ if (!currentRound) {
 
   if (screen === 'winner') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <p style={{color:'#e8ff00',fontSize:12,letterSpacing:4,marginBottom:16}}>FÉLICITATIONS</p>
         <h1 style={{fontSize:80,color:'#e8ff00',marginBottom:8,letterSpacing:-4}}>WINNER</h1>
@@ -937,7 +925,6 @@ if (!currentRound) {
 
   if (screen === 'eliminated') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      {hint}
       <div style={{textAlign:'center',padding:24}}>
         <h1 style={{fontSize:64,color:'#ff3131',marginBottom:16}}>ÉLIMINÉ</h1>
         <p style={{color:'#555',fontSize:13,marginBottom:16}}>Tu as atteint 0 PV.</p>
@@ -990,7 +977,6 @@ function RankDisplay({ player, game }) {
   }
 if (screen === 'rules') return (
   <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
-    {hint}
     <div style={{maxWidth:600,margin:'0 auto',padding:'60px 24px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
         <button onClick={() => setScreen('waiting-open')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2}}>← {lang === 'fr' ? 'RETOUR' : 'BACK'}</button>
