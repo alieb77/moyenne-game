@@ -31,6 +31,8 @@ export default function Home() {
   const oscillatorRef = useRef(null)
   const intervalRef = useRef(null)
 
+  console.log('Home render', { screen, game, user })
+
   const tr = (key) => translations[lang]?.[key] ?? key
 
   useEffect(() => {
