@@ -452,7 +452,11 @@ if (!currentRound) {
   }
 
   const openHistory = async () => {
-    if (!game?.id) return
+    console.log('openHistory called, game:', game)
+    if (!game?.id) {
+      console.log('No game id, returning')
+      return
+    }
 
     setHistoryLoading(true)
     try {
@@ -463,10 +467,12 @@ if (!currentRound) {
         .eq('status', 'done')
         .order('round_number', { ascending: false })
 
+      console.log('doneRounds:', doneRounds)
       const roundsList = doneRounds ?? []
       setHistoryRounds(roundsList)
 
       const defaultRound = roundsList.find((r) => r.round_number === results?.roundNumber) ?? roundsList[0] ?? null
+      console.log('defaultRound:', defaultRound)
       if (defaultRound) {
         await loadHistoryRoundDetails(defaultRound)
       } else {
@@ -475,6 +481,7 @@ if (!currentRound) {
       }
 
       setScreen('history')
+      console.log('Screen set to history')
     } catch (err) {
       console.error('Failed to load history rounds', err)
       setMessage('Erreur de chargement de l\'historique. Réessaie plus tard.')
@@ -822,7 +829,9 @@ if (!currentRound) {
     </div>
   )
 
-  if (screen === 'history') return (
+  if (screen === 'history') {
+    console.log('Rendering history screen, historyRounds:', historyRounds, 'selectedHistoryRound:', selectedHistoryRound)
+    return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace'}}>
       <div style={{maxWidth:900,margin:'0 auto',padding:'40px 24px'}}>
         <button onClick={() => setScreen('results')} style={{background:'none',border:'none',color:'white',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:24}}>
