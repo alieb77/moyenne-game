@@ -22,6 +22,8 @@ export default function Home() {
   const [historySubmissions, setHistorySubmissions] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
+  const hint = null
+
   const [lang, setLang] = useState('fr')
   const [isMobile, setIsMobile] = useState(false)
   const [musicOn, setMusicOn] = useState(false)
