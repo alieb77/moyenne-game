@@ -206,10 +206,26 @@ export default function Home() {
     const gamesChannel = supabase
       .channel('games-changes')
       .on('postgres_changes', {
-        event: '*',
+        event: 'DELETE',
+        schema: 'public',
+        table: 'games'
+      }, () => {
+        // Reset complet du jeu lorsque la partie est supprimée (reset admin)
+        setGame(null)
+        setRound(null)
+        setResults(null)
+        setPlayer(null)
+        setWinnerUsername(null)
+        setTotalRanking([])
+        setPrevRanking([])
+        setScreen('waiting-open')
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
         schema: 'public',
         table: 'games'
       }, async () => {
+        // Nouvelle game créée (après reset) : on rejoint automatiquement
         const { data: profile } = await supabase
           .from('profiles').select('username').eq('id', user.id).single()
         if (profile?.username) {
