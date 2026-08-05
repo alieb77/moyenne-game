@@ -2,9 +2,13 @@
 --  MOYENNE — Reconstruction complète du backend Supabase
 --  À coller dans : Supabase Dashboard → SQL Editor → New query → Run
 --
---  Reconstruit à partir du code de app/page.js et app/admin/page.js.
+--  Version SANS authentification email : on rejoint un SALON avec un CODE.
+--  L'identité d'un joueur = un UUID généré côté client (localStorage),
+--  stocké dans players.client_id. Plus de magic link, plus de table profiles.
+--
 --  Crée : tables, contraintes, RLS, Realtime, et la fonction close_round.
 --  Idempotent : peut être relancé sans casser (drop if exists en tête).
+--  ⚠️ Relancer ce script EFFACE toutes les parties existantes.
 -- =====================================================================
 
 -- ---------- Nettoyage (si tu relances le script) --------------------
@@ -12,38 +16,35 @@ drop function if exists public.close_round(uuid);
 drop table if exists public.submissions cascade;
 drop table if exists public.rounds      cascade;
 drop table if exists public.players     cascade;
-drop table if exists public.profiles    cascade;
+drop table if exists public.profiles    cascade;   -- plus utilisée
 drop table if exists public.games       cascade;
 
 -- =====================================================================
 --  TABLES
 -- =====================================================================
 
--- Parties. L'admin en crée une par "reset". Statut vivant = 'waiting'.
+-- Salons / parties. Chaque salon a un CODE unique que l'admin partage.
+-- L'admin en crée une par "reset". Statut vivant = 'waiting'.
 create table public.games (
   id         uuid primary key default gen_random_uuid(),
-  status     text not null default 'waiting',   -- 'waiting' | 'active' | 'done'
+  code       text not null unique,                 -- code du salon (ex: 'MOYEN')
+  status     text not null default 'waiting',      -- 'waiting' | 'active' | 'done'
   created_at timestamptz not null default now()
 );
 
--- Profil = pseudo unique rattaché au compte auth (magic link).
-create table public.profiles (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  username   text not null unique,
-  created_at timestamptz not null default now()
-);
-
--- Un joueur = une participation d'un compte à une partie.
+-- Un joueur = une participation à une partie.
+-- client_id = UUID généré côté client (localStorage), remplace l'ancien user_id auth.
 create table public.players (
   id                  uuid primary key default gen_random_uuid(),
   game_id             uuid not null references public.games(id) on delete cascade,
-  user_id             uuid not null references auth.users(id) on delete cascade,
+  client_id           uuid not null,
   username            text not null,
   pv                  numeric not null default 100,
   eliminated          boolean not null default false,
   eliminated_at_round int,
   created_at          timestamptz not null default now(),
-  unique (game_id, user_id)
+  unique (game_id, client_id),   -- un même appareil ne rejoint qu'une fois
+  unique (game_id, username)     -- pseudo unique dans un salon
 );
 
 -- Rounds d'une partie. average/target remplis à la clôture.
@@ -74,7 +75,7 @@ create table public.submissions (
 
 -- Index utiles
 create index on public.players     (game_id);
-create index on public.players     (user_id);
+create index on public.players     (client_id);
 create index on public.rounds      (game_id);
 create index on public.submissions (round_id);
 create index on public.submissions (player_id);
@@ -208,19 +209,14 @@ grant execute on function public.close_round(uuid) to anon, authenticated;
 
 -- =====================================================================
 --  ROW LEVEL SECURITY
---  NB : la page /admin utilise la même clé anon (pas de service_role),
---  donc les insert/delete de games & rounds sont ouverts. Acceptable
---  pour un jeu entre camarades ; le mot de passe admin est côté client.
+--  Plus d'authentification : tout se fait avec la clé anon. Les policies
+--  sont donc ouvertes (with check true). Acceptable pour un jeu entre
+--  camarades ; le "code du salon" sert de barrière d'entrée.
 -- =====================================================================
-alter table public.profiles    enable row level security;
 alter table public.games       enable row level security;
 alter table public.players     enable row level security;
 alter table public.rounds      enable row level security;
 alter table public.submissions enable row level security;
-
--- profiles : lecture publique, création de son propre profil
-create policy profiles_select      on public.profiles for select using (true);
-create policy profiles_insert_own  on public.profiles for insert with check (auth.uid() = id);
 
 -- games : lecture + gestion (admin depuis le client)
 create policy games_select on public.games for select using (true);
@@ -234,19 +230,14 @@ create policy rounds_insert on public.rounds for insert with check (true);
 create policy rounds_update on public.rounds for update using (true) with check (true);
 create policy rounds_delete on public.rounds for delete using (true);
 
--- players : lecture publique, s'inscrit soi-même, reset admin (delete)
-create policy players_select     on public.players for select using (true);
-create policy players_insert_own on public.players for insert
-  with check (auth.uid() = user_id);
-create policy players_delete     on public.players for delete using (true);
+-- players : lecture publique, s'inscrit soi-même (code du salon = barrière), reset admin
+create policy players_select on public.players for select using (true);
+create policy players_insert on public.players for insert with check (true);
+create policy players_delete on public.players for delete using (true);
 
--- submissions : lecture publique, soumet pour son propre joueur, reset (delete)
+-- submissions : lecture publique, soumet, reset (delete)
 create policy submissions_select on public.submissions for select using (true);
-create policy submissions_insert_own on public.submissions for insert
-  with check (exists (
-    select 1 from public.players p
-    where p.id = player_id and p.user_id = auth.uid()
-  ));
+create policy submissions_insert on public.submissions for insert with check (true);
 create policy submissions_delete on public.submissions for delete using (true);
 
 -- =====================================================================
@@ -265,8 +256,9 @@ begin
 end $$;
 
 -- =====================================================================
---  Partie de départ (pour que /admin trouve tout de suite une game)
+--  Salon de départ (pour que /admin trouve tout de suite une game)
+--  Code par défaut : MOYEN — l'admin peut le régénérer depuis /admin.
 -- =====================================================================
-insert into public.games (status) values ('waiting');
+insert into public.games (code, status) values ('MOYEN', 'waiting');
 
 -- Fin. ✅

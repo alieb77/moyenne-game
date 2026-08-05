@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 
 export default function Home() {
   const [screen, setScreen] = useState('loading')
-  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [joinedCode, setJoinedCode] = useState(null)
   const [username, setUsername] = useState('')
-  const [user, setUser] = useState(null)
   const [game, setGame] = useState(null)
   const [round, setRound] = useState(null)
   const [player, setPlayer] = useState(null)
@@ -30,8 +30,25 @@ export default function Home() {
   const audioRef = useRef(null)
   const oscillatorRef = useRef(null)
   const intervalRef = useRef(null)
+  const clientIdRef = useRef(null)
 
-  console.log('Home render', { screen, game, user })
+  const getClientId = () => {
+    if (clientIdRef.current) return clientIdRef.current
+    let id = null
+    try {
+      id = localStorage.getItem('moyenne_client_id')
+      if (!id) {
+        id = (crypto?.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2))
+        localStorage.setItem('moyenne_client_id', id)
+      }
+    } catch {
+      id = String(Date.now()) + Math.random().toString(16).slice(2)
+    }
+    clientIdRef.current = id
+    return id
+  }
+
+  console.log('Home render', { screen, game, joinedCode })
 
   const tr = (key) => translations[lang]?.[key] ?? key
 
@@ -152,19 +169,20 @@ export default function Home() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (!session?.user) setScreen('home')
-    })
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (!session?.user) setScreen('home')
-    })
+    getClientId()
+    let savedCode = null, savedName = null
+    try {
+      savedCode = localStorage.getItem('moyenne_code')
+      savedName = localStorage.getItem('moyenne_username')
+    } catch {}
+    if (savedCode && savedName) {
+      setCode(savedCode)
+      setUsername(savedName)
+      joinGame(savedName, savedCode)
+    } else {
+      setScreen('home')
+    }
   }, [])
-
-  useEffect(() => {
-    if (user) checkProfile()
-  }, [user])
 
   useEffect(() => {
     if (!round) return
@@ -201,7 +219,14 @@ export default function Home() {
   }, [round])
 
   useEffect(() => {
-    if (!user) return
+    if (!joinedCode) return
+
+    const rejoin = async () => {
+      let savedName = null
+      try { savedName = localStorage.getItem('moyenne_username') } catch {}
+      const uname = savedName || player?.username || username
+      if (uname) await joinGame(uname, joinedCode)
+    }
 
     const gamesChannel = supabase
       .channel('games-changes')
@@ -224,13 +249,9 @@ export default function Home() {
         event: 'INSERT',
         schema: 'public',
         table: 'games'
-      }, async () => {
-        // Nouvelle game créée (après reset) : on rejoint automatiquement
-        const { data: profile } = await supabase
-          .from('profiles').select('username').eq('id', user.id).single()
-        if (profile?.username) {
-          await joinGame(profile.username)
-        }
+      }, () => {
+        // Nouveau salon créé (après reset) : on rejoint automatiquement via le code
+        rejoin()
       })
       .subscribe()
 
@@ -243,13 +264,9 @@ export default function Home() {
           schema: 'public',
           table: 'rounds',
           filter: `game_id=eq.${game.id}`
-        }, async (payload) => {
+        }, (payload) => {
           if (payload.new?.status === 'open' && payload.new?.id !== round?.id) {
-            const { data: prof } = await supabase
-              .from('profiles').select('username').eq('id', user.id).single()
-            if (prof?.username) {
-              await joinGame(prof.username)
-            }
+            rejoin()
           }
         })
         .subscribe()
@@ -259,73 +276,52 @@ export default function Home() {
       supabase.removeChannel(gamesChannel)
       if (gameRoundsChannel) supabase.removeChannel(gameRoundsChannel)
     }
-  }, [user, game?.id, player?.username, round?.id])
+  }, [joinedCode, game?.id, player?.username, round?.id])
 
-  const checkProfile = async () => {
-    const { data: profile } = await supabase
-      .from('profiles').select('*').eq('id', user.id).single()
-    if (!profile) {
-      setScreen('username')
-    } else {
-      if (!player) await joinGame(profile.username)
-    else {
-      const { data: freshPlayer } = await supabase
-        .from('players').select('*').eq('id', player.id).single()
-      if (freshPlayer) setPlayer(freshPlayer)
-    }
-        }
-      }
+  const joinGame = async (uname, gameCode) => {
+    const clientId = getClientId()
+    const normCode = String(gameCode ?? joinedCode ?? '').trim().toUpperCase()
+    const normName = String(uname ?? '').trim()
 
-  const saveUsername = async () => {
-    if (!username.trim() || username.length < 2) {
-      setMessage('Pseudo trop court !')
+    if (!normCode) {
+      setMessage('Entre le code du salon !')
+      setScreen('join')
       return
     }
-    const { error } = await supabase
-      .from('profiles').insert({ id: user.id, username: username.trim() })
-    if (error) { setMessage('Ce pseudo est déjà pris !'); return }
-    await joinGame(username.trim())
-  }
-
-  const joinGame = async (uname) => {
-    const { data: games } = await supabase
-      .from('games').select('*').in('status', ['waiting', 'active']).limit(1)
-    let currentGame = games?.[0] ?? null
-    let existingPlayer = null
-
-    if (currentGame) {
-      const { data } = await supabase
-        .from('players')
-        .select('*')
-        .eq('game_id', currentGame.id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      existingPlayer = data
-    } else {
-      const { data: previousPlayers } = await supabase
-        .from('players')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      const previousPlayer = previousPlayers?.[0]
-      if (previousPlayer) {
-        const { data: previousGame } = await supabase
-          .from('games')
-          .select('*')
-          .eq('id', previousPlayer.game_id)
-          .single()
-        currentGame = previousGame ?? null
-        existingPlayer = previousPlayer
-      }
+    if (normName.length < 2) {
+      setMessage('Pseudo trop court !')
+      setScreen('join')
+      return
     }
+
+    const { data: games } = await supabase
+      .from('games').select('*')
+      .eq('code', normCode)
+      .in('status', ['waiting', 'active'])
+      .limit(1)
+    const currentGame = games?.[0] ?? null
 
     if (!currentGame) {
-      setMessage("Aucune partie en cours. Attends que l'admin lance une nouvelle partie.")
-      setScreen('waiting-open')
+      setMessage('Aucun salon actif avec ce code.')
+      setScreen('join')
       return
     }
+
+    // Mémorise le salon rejoint pour la reconnexion automatique
+    try {
+      localStorage.setItem('moyenne_code', normCode)
+      localStorage.setItem('moyenne_username', normName)
+    } catch {}
+    setJoinedCode(normCode)
+    setCode(normCode)
+    setUsername(normName)
+
+    let { data: existingPlayer } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', currentGame.id)
+      .eq('client_id', clientId)
+      .maybeSingle()
 
     setGame(currentGame)
     if (!existingPlayer) {
@@ -340,9 +336,18 @@ export default function Home() {
         return
       }
 
-      const { data } = await supabase
-        .from('players').insert({ game_id: currentGame.id, user_id: user.id, username: uname, pv: 100 })
+      const { data, error } = await supabase
+        .from('players').insert({ game_id: currentGame.id, client_id: clientId, username: normName, pv: 100 })
         .select().single()
+      if (error) {
+        if (error.code === '23505') {
+          setMessage('Ce pseudo est déjà pris dans ce salon !')
+        } else {
+          setMessage('Erreur : ' + error.message)
+        }
+        setScreen('join')
+        return
+      }
       existingPlayer = data
     }
     const { data: freshPlayer } = await supabase
@@ -526,8 +531,12 @@ if (!currentRound) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    setUser(null); setGame(null); setRound(null); setPlayer(null)
+    try {
+      localStorage.removeItem('moyenne_code')
+      localStorage.removeItem('moyenne_username')
+    } catch {}
+    setJoinedCode(null); setCode(''); setUsername('')
+    setGame(null); setRound(null); setPlayer(null)
     setResults(null); setWinnerUsername(null); setTotalRanking([]); setScreen('home')
   }
 
@@ -570,7 +579,7 @@ if (!currentRound) {
             ))}
           </div>
         </div>
-        <button onClick={() => setScreen('login')}
+        <button onClick={() => { setMessage(''); setScreen('join') }}
           style={{width:'100%',padding:18,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:3}}>
           {tr('play')}
         </button>
@@ -578,46 +587,27 @@ if (!currentRound) {
     </div>
   )
 
-  if (screen === 'login') return (
+  if (screen === 'join') return (
     <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
       {hint}
       <div style={{maxWidth:400,width:'100%',padding:24}}>
-        <button onClick={() => setScreen('home')} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:32}}>← RETOUR</button>
-        <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>CONNEXION</h1>
-        <p style={{color:'#555',marginBottom:32,fontSize:12}}>Un lien magique sera envoyé à ton email</p>
-        <input type="email" placeholder="ton@email.com" value={email}
-          onChange={e => setEmail(e.target.value)}
-          style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:16,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
+        <button onClick={() => { setMessage(''); setScreen('home') }} style={{background:'none',border:'none',color:'#555',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2,marginBottom:32}}>← RETOUR</button>
+        <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>REJOINDRE UN SALON</h1>
+        <p style={{color:'#555',marginBottom:32,fontSize:12}}>Entre le code du salon donné par l&apos;organisateur, puis ton pseudo.</p>
+        <input type="text" placeholder="CODE DU SALON" value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())}
+          maxLength={12}
+          onKeyDown={e => e.key === 'Enter' && joinGame(username, code)}
+          style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'#e8ff00',fontSize:22,letterSpacing:6,textAlign:'center',marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
- <button onClick={async () => {
-  // if (!email.endsWith('@groupeiscae.ma')) {
-  //  setMessage('Seules les adresses @groupeiscae.ma sont autorisées !')
-  //  return
-  // }
-  await supabase.auth.signInWithOtp({ email })
-  setMessage('Vérifie ton email !')
-}}
-  style={{width:'100%',padding:14,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
-  ENVOYER LE LIEN →
-</button>
-        {message && <p style={{color:'#00ff88',marginTop:12,fontSize:12}}>{message}</p>}
-      </div>
-    </div>
-  )
-
-  if (screen === 'username') return (
-    <div style={{minHeight:'100vh',background:'#000',color:'white',fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      {hint}
-      <div style={{maxWidth:400,width:'100%',padding:24}}>
-        <h1 style={{fontSize:36,color:'#e8ff00',marginBottom:4}}>TON PSEUDO</h1>
-        <p style={{color:'#555',marginBottom:32,fontSize:12}}>Il sera visible de tous les joueurs</p>
-        <input type="text" placeholder="Ex: Lkhadri67" value={username}
+        <input type="text" placeholder="TON PSEUDO" value={username}
           onChange={e => setUsername(e.target.value)} maxLength={20}
+          onKeyDown={e => e.key === 'Enter' && joinGame(username, code)}
           style={{width:'100%',padding:12,background:'#111',border:'1px solid #333',color:'white',fontSize:20,marginBottom:12,boxSizing:'border-box',fontFamily:'monospace'}}
         />
-        <button onClick={saveUsername}
+        <button onClick={() => joinGame(username, code)}
           style={{width:'100%',padding:14,background:'#e8ff00',color:'#000',border:'none',cursor:'pointer',fontSize:14,fontFamily:'monospace',letterSpacing:2}}>
-          ENTRER DANS L'ARÈNE →
+          ENTRER DANS L&apos;ARÈNE →
         </button>
         {message && <p style={{color:'#ff3131',marginTop:12,fontSize:12}}>{message}</p>}
       </div>

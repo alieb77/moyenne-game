@@ -4,6 +4,14 @@ import { supabase } from '../../lib/supabase'
 
 const ADMIN_PASSWORD = 'moyenne2024'
 
+// Code de salon : 5 caractères sans ambiguïté (pas de O/0/I/1)
+const genCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let out = ''
+  for (let i = 0; i < 5; i++) out += chars[Math.floor(Math.random() * chars.length)]
+  return out
+}
+
 export default function Admin() {
   const [auth, setAuth] = useState(false)
   const [pwd, setPwd] = useState('')
@@ -52,12 +60,18 @@ export default function Admin() {
   }, [auth])
 
   const startRound = async () => {
-    if (!game) {
+    let currentGame = game
+    if (!currentGame) {
+      const { data: existing } = await supabase
+        .from('games').select('*').in('status', ['waiting', 'active']).limit(1)
+      currentGame = existing?.[0] ?? null
+    }
+    if (!currentGame) {
       const { data } = await supabase
-        .from('games').insert({ status: 'waiting' }).select().single()
+        .from('games').insert({ code: genCode(), status: 'waiting' }).select().single()
+      currentGame = data
       setGame(data)
     }
-    const currentGame = game || (await supabase.from('games').select('*').in('status', ['waiting', 'active']).limit(1)).data?.[0]
     if (!currentGame) return
 
     const { data: lastRound } = await supabase
@@ -80,17 +94,40 @@ export default function Admin() {
   }
 
   const resetGame = async () => {
-    if (!confirm('Effacer toute la partie ?')) return
+    if (!confirm('Effacer toute la partie ? (le code du salon est conservé)')) return
+    // On garde le même code pour que les joueurs se reconnectent automatiquement
+    const keepCode = game?.code || genCode()
     await supabase.from('submissions').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     await supabase.from('rounds').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     await supabase.from('games').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    const { data } = await supabase.from('games').insert({ status: 'waiting' }).select().single()
+    const { data } = await supabase.from('games').insert({ code: keepCode, status: 'waiting' }).select().single()
     setGame(data)
     setRound(null)
     setPlayers([])
     setSubmissions([])
-    setMessage('Partie réinitialisée !')
+    setMessage('Partie réinitialisée ! Code du salon : ' + keepCode)
+  }
+
+  const regenerateCode = async () => {
+    if (!game) return
+    if (!confirm('Générer un nouveau code ? Les joueurs devront le saisir à nouveau.')) return
+    const newCode = genCode()
+    const { data, error } = await supabase
+      .from('games').update({ code: newCode }).eq('id', game.id).select().single()
+    if (error) { setMessage('Erreur : ' + error.message); return }
+    setGame(data)
+    setMessage('Nouveau code du salon : ' + newCode)
+  }
+
+  const copyCode = async () => {
+    if (!game?.code) return
+    try {
+      await navigator.clipboard.writeText(game.code)
+      setMessage('Code copié : ' + game.code)
+    } catch {
+      setMessage('Code du salon : ' + game.code)
+    }
   }
 
   if (!auth) return (
@@ -133,6 +170,25 @@ export default function Admin() {
             <p style={{color:'#00ff88',margin:0,fontSize:12}}>{message}</p>
           </div>
         )}
+
+        {/* Code du salon */}
+        <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
+          <p style={{color:'#555',fontSize:11,letterSpacing:3,marginBottom:12}}>CODE DU SALON</p>
+          <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+            <span style={{fontSize:48,color:'#e8ff00',letterSpacing:8,fontWeight:'bold'}}>{game?.code ?? '—'}</span>
+            <button onClick={copyCode}
+              style={{padding:'10px 16px',background:'transparent',border:'1px solid #333',color:'#00ff88',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2}}>
+              COPIER
+            </button>
+            <button onClick={regenerateCode}
+              style={{padding:'10px 16px',background:'transparent',border:'1px solid #333',color:'#888',cursor:'pointer',fontFamily:'monospace',fontSize:11,letterSpacing:2}}>
+              NOUVEAU CODE
+            </button>
+          </div>
+          <p style={{color:'#555',fontSize:11,marginTop:12,marginBottom:0}}>
+            Partage ce code aux joueurs pour qu&apos;ils rejoignent le salon.
+          </p>
+        </div>
 
         {/* Contrôle rounds */}
         <div style={{background:'#111',border:'1px solid #222',padding:24,marginBottom:24}}>
